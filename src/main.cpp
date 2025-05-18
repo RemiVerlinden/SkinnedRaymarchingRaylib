@@ -17,7 +17,8 @@
 *
 ********************************************************************************************/
 
-
+int g_frame = 0;
+bool pause = false;
 
 #define R3D_ASSIMP_SUPPORT
 #define R3D_IMPLEMENTATION
@@ -51,7 +52,7 @@ int main(void)
 	camera.projection = CAMERA_PERSPECTIVE;         // Camera projection type
 
 	// Load gltf model
-	Model characterModel = LoadModel("resources/models/gltf/greenman.glb"); // Load character model
+	Model characterModel = LoadModel("resources/models/gltf/pirate/pirate.glb"); // Load character model
 
 	// Load skinning shader
 	Shader skinningShader = LoadShader(TextFormat("resources/shaders/glsl%i/skinning.vs", GLSL_VERSION),
@@ -62,8 +63,7 @@ int main(void)
 	// Load gltf model animations
 	int animsCount = 0;
 	unsigned int animIndex = 0;
-	unsigned int animCurrentFrame = 0;
-	ModelAnimation* modelAnimations = LoadModelAnimations("resources/models/gltf/greenman.glb", &animsCount);
+	ModelAnimation* modelAnimations = LoadModelAnimations("resources/models/gltf/pirate/pirate.glb", &animsCount);
 
 	Vector3 position = { 0.0f, 0.0f, 0.0f }; // Set model position
 
@@ -82,11 +82,14 @@ int main(void)
 		// Select current animation
 		if (IsKeyPressed(KEY_T)) animIndex = (animIndex + 1) % animsCount;
 		else if (IsKeyPressed(KEY_G)) animIndex = (animIndex + animsCount - 1) % animsCount;
+		
+		if (IsKeyPressed(KEY_P)) pause = !pause;
 
 		// Update model animation
 		ModelAnimation anim = modelAnimations[animIndex];
-		animCurrentFrame = (animCurrentFrame + 1) % anim.frameCount;
+		unsigned int animCurrentFrame = g_frame % anim.frameCount;
 		characterModel.transform = MatrixTranslate(position.x, position.y, position.z);
+		characterModel.transform = MatrixScale(0.02, 0.02, 0.02);
 		UpdateModelAnimationBones(characterModel, anim, animCurrentFrame);
 		//----------------------------------------------------------------------------------
 
@@ -109,6 +112,9 @@ int main(void)
 
 		EndDrawing();
 		//----------------------------------------------------------------------------------
+
+		if(!pause)
+			g_frame++;
 	}
 
 	// De-Initialization
