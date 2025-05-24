@@ -18,10 +18,7 @@
 ********************************************************************************************/
 
 
-
-#include <raylib.h>
-#include <raymath.h>
-#include <klein\klein.hpp>
+#include "common.h"
 
 #if defined(PLATFORM_DESKTOP)
 #define GLSL_VERSION            330
@@ -30,8 +27,7 @@
 #endif
 
 
-int g_frame = 0;
-bool g_pause = false;
+GlobalVars gGlobals;
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -87,11 +83,11 @@ int main(void)
 		if (IsKeyPressed(KEY_T)) animIndex = (animIndex + 1) % animsCount;
 		else if (IsKeyPressed(KEY_G)) animIndex = (animIndex + animsCount - 1) % animsCount;
 		
-		if (IsKeyPressed(KEY_P)) g_pause = !g_pause;
+		if (IsKeyPressed(KEY_P)) gGlobals.paused = !gGlobals.paused;
 
 		// Update model animation
 		ModelAnimation anim = modelAnimations[animIndex];
-		unsigned int animCurrentFrame = g_frame % anim.frameCount;
+		unsigned int animCurrentFrame = gGlobals.frame % anim.frameCount;
 		characterModel.transform = MatrixTranslate(position.x, position.y, position.z);
 		characterModel.transform = MatrixScale(0.02, 0.02, 0.02);
 		UpdateModelAnimationBones(characterModel, anim, animCurrentFrame);
@@ -117,8 +113,8 @@ int main(void)
 		EndDrawing();
 		//----------------------------------------------------------------------------------
 
-		if(!g_pause)
-			g_frame++;
+		if(!gGlobals.paused)
+			gGlobals.frame++;
 	}
 
 	// De-Initialization

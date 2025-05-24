@@ -1,3 +1,5 @@
+#ifndef RESOURCEDIR_H
+#define RESOURCEDIR_H
 /**********************************************************************************************
 *
 *   raylibExtras * Utilities and Shared Components for Raylib
@@ -28,7 +30,6 @@
 *
 **********************************************************************************************/
 
-#pragma once
 
 #include "raylib.h"
 
@@ -92,4 +93,6 @@ extern "C" {            // Prevents name mangling of functions
 
 #if defined(__cplusplus)
 }
+
 #endif
+#endif // !RESOURCEDIR_H
