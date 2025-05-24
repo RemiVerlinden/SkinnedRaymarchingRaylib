@@ -17,18 +17,21 @@
 *
 ********************************************************************************************/
 
-int g_frame = 0;
-bool pause = false;
+
 
 #include <raylib.h>
 #include <raymath.h>
-
+#include <klein\klein.hpp>
 
 #if defined(PLATFORM_DESKTOP)
 #define GLSL_VERSION            330
 #else   // PLATFORM_ANDROID, PLATFORM_WEB
 #define GLSL_VERSION            100
 #endif
+
+
+int g_frame = 0;
+bool g_pause = false;
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -56,8 +59,8 @@ int main(void)
 	Model characterModel = LoadModel("models/gltf/pirate/pirate.glb"); // Load character model
 
 	// Load skinning shader
-	Shader skinningShader = LoadShader(TextFormat("shaders/glsl%i/skinning.vs", GLSL_VERSION),
-		TextFormat("shaders/glsl%i/skinning.fs", GLSL_VERSION));
+	Shader skinningShader = LoadShader(TextFormat("shaders/glsl%i/LinearBlendSkinning.vs", GLSL_VERSION),
+		TextFormat("shaders/glsl%i/LinearBlendSkinning.fs", GLSL_VERSION));
 
 	characterModel.materials[1].shader = skinningShader;
 
@@ -84,7 +87,7 @@ int main(void)
 		if (IsKeyPressed(KEY_T)) animIndex = (animIndex + 1) % animsCount;
 		else if (IsKeyPressed(KEY_G)) animIndex = (animIndex + animsCount - 1) % animsCount;
 		
-		if (IsKeyPressed(KEY_P)) pause = !pause;
+		if (IsKeyPressed(KEY_P)) g_pause = !g_pause;
 
 		// Update model animation
 		ModelAnimation anim = modelAnimations[animIndex];
@@ -114,7 +117,7 @@ int main(void)
 		EndDrawing();
 		//----------------------------------------------------------------------------------
 
-		if(!pause)
+		if(!g_pause)
 			g_frame++;
 	}
 
