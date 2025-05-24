@@ -20,9 +20,8 @@
 int g_frame = 0;
 bool pause = false;
 
-#define R3D_ASSIMP_SUPPORT
-#define R3D_IMPLEMENTATION
-#include "r3d.h"
+#include <raylib.h>
+#include <raymath.h>
 
 
 #if defined(PLATFORM_DESKTOP)
@@ -40,6 +39,8 @@ int main(void)
 	//--------------------------------------------------------------------------------------
 	const int screenWidth = 800;
 	const int screenHeight = 450;
+	
+	ChangeDirectory(RESOURCES_PATH);
 
 	InitWindow(screenWidth, screenHeight, "raylib [models] example - GPU skinning");
 
@@ -52,18 +53,18 @@ int main(void)
 	camera.projection = CAMERA_PERSPECTIVE;         // Camera projection type
 
 	// Load gltf model
-	Model characterModel = LoadModel("resources/models/gltf/pirate/pirate.glb"); // Load character model
+	Model characterModel = LoadModel("models/gltf/pirate/pirate.glb"); // Load character model
 
 	// Load skinning shader
-	Shader skinningShader = LoadShader(TextFormat("resources/shaders/glsl%i/skinning.vs", GLSL_VERSION),
-		TextFormat("resources/shaders/glsl%i/skinning.fs", GLSL_VERSION));
+	Shader skinningShader = LoadShader(TextFormat("shaders/glsl%i/skinning.vs", GLSL_VERSION),
+		TextFormat("shaders/glsl%i/skinning.fs", GLSL_VERSION));
 
 	characterModel.materials[1].shader = skinningShader;
 
 	// Load gltf model animations
 	int animsCount = 0;
 	unsigned int animIndex = 0;
-	ModelAnimation* modelAnimations = LoadModelAnimations("resources/models/gltf/pirate/pirate.glb", &animsCount);
+	ModelAnimation* modelAnimations = LoadModelAnimations("models/gltf/pirate/pirate.glb", &animsCount);
 
 	Vector3 position = { 0.0f, 0.0f, 0.0f }; // Set model position
 

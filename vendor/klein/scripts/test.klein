@@ -1,0 +1,145 @@
+# Verification of computations used in various tests
+
+# Line * ideal line
+(e02 + e12 + 2 e31 + 3 e23) * (-2 e01 + e02 + 4 e03)
+
+# Line * point
+(e03 + e12 + 2 e31 + 3 e23) * (-2 e032 + e013 + 4 e021 + e123)
+
+# Point * line
+(-2 e032 + e013 + 4 e021 + e123) * (e03 + e12 + 2 e31 + 3 e23)
+
+# Dense * dense
+(1 + e0 + e1 + e2 + e3 + e12 + e31 + e23 + e01 + e02 + e03 + e123 + e021 + e013 + e032 + e0123) * (1 + e0 + e1 + e2 + e3 + e12 + e31 + e23 + e01 + e02 + e03 + e123 + e021 + e013 + e032 + e0123)
+
+# Plane ^ plane
+(e1 + 2e2 + 3e3 + 4e0) ^ (2e1 + 3e2 - e3 - 2e0)
+
+# Plane ^ line
+(e1 + 2e2 + 3e3 + 4e0) ^ (e03 - 2e12 + e31 + 4e23)
+
+# Plane ^ ideal line
+(e1 + 2e2 + 3e3 + 4e0) ^ (-2e01 + e02 + 4e03)
+
+# Plane ^ point
+(e1 + 2e2 + 3e3 + 4e0) ^ (e123 + -2e032 + e013 + 4e021)
+
+# Line ^ plane
+(e03 - 2e12 + e31 + 4e23) ^ (e1 + 2e2 + 3e3 + 4e0)
+
+# Line ^ line
+(e01 + e12 + 2e31 + 3e23) ^ (e02 - 2e12 + e31 + 4e23)
+
+# Line ^ ideal line
+(e03 - 2e12 + e31 + 4e23) ^ (-2e01 + e02 + 4e03)
+
+# Line ^ point
+(e01 + e12 + 2e31 + 3e23) ^ (e123 - 2e032 + e013 + 4e021)
+
+# Ideal line ^ plane
+(-2e01 + e02 + 4e03) ^ (e1 + 2e2 + 3e3 + 4e0)
+
+# Ideal line ^ line
+(-2e01 + e02 + 4e03) ^ (e03 - 2e12 + e31 + 4e23)
+
+# Point ^ plane
+(e123 + -2e032 + e013 + 4e021) ^ (e1 + 2e2 + 3e3 + 4e0)
+
+# Point ^ line
+(e123 - 2e032 + e013 + 4e021) ^ (e01 + e12 + 2e31 + 3e23)
+
+# Point ^ ideal line
+(e01 + 2e02 + 3e03) ^ (e123 - 2e032 + e013 + 4e021)
+
+# Point ^ point
+(e123 + e032 + 2e013 + 3e021) ^ (e123 - 2e032 + e013 + 4e021)
+
+# Plane | plane
+(e1 + 2e2 + 3e3 + 4e0) | (2e1 + 3e2 -e3 -2e0)
+
+# Plane | line
+(e1 + 2e2 + 3e3 + 4e0) | (e03 - 2e12 + e31 + 4e23)
+
+# Plane | ideal line
+(e1 + 2e2 + 3e3 + 4e0) | (-2e01 + e02 + 4e03)
+
+# Plane | point
+(e1 + 2e2 + 3e3 + 4e0) | (e123 -2e032 + e013 + 4e021)
+
+# Line | plane
+(e03 - 2e12 + e31 + 4e23) | (e1 + 2e2 + 3e3 + 4e0)
+
+# Line | line
+(e01 + e12 + 2e31 + 3e23) | (e02 - 2e12 + e31 + 4e23)
+
+# Line | ideal line
+(e03 - 2e12 + e31 + 4e23) | (-2e01 + e02 + 4e03)
+
+# Line | point
+(e03 + e12 + 2e31 + 3e23) | (e123 -2e032 + e013 + 4e021)
+
+# Ideal line | plane
+(-2e01 + e02 + 4e03) | (e1 + 2e2 + 3e3 + 4e0)
+
+# Ideal line | plane
+(-2e01 + e02 + 4e03) | (e03 + e12 + 2e31 + 3e23)
+
+# Ideal line | point
+(-2e01 + e02 + 4e03) | (e123 - 2e032 + 1e013 + 4e021)
+
+# Point | plane
+(e123 - 2e032 + e013 + 4e021) | (e1 + 2e2 + 3e3 + 4e0)
+
+# Point | line
+(e123 - 2e032 + e013 + 4e021) | (e03 + e12 + 2e31 + 3e23)
+
+# Point | line
+(e123 - 2e032 + e013 + 4e021) | (e01 + 2e02 + 3e03)
+
+# Point | point
+(e123 + e032 + 2e013 + 3e021) | (e123 - 2e032 + e013 + 4e021)
+
+# Dense | dense
+(1 + e0 + e1 + e2 + e3 + e12 + e31 + e23 + e01 + e02 + e03 + e123 + e021 + e013 + e032 + e0123) | (1 + e0 + e1 + e2 + e3 + e12 + e31 + e23 + e01 + e02 + e03 + e123 + e021 + e013 + e032 + e0123)
+
+# Reflect plane
+(3e1 + 2e2 + e3 - e0) * (e1 + 2e2 - e3 - 3e0) *(3e1 + 2e2 + e3 - e0)
+
+# Reflect line
+(3e1 + 2e2 + e3 - e0) * (e01 - 2e02 + 3e03 - 4e12 + 5e31 + 6e23) *(3e1 + 2e2 + e3 - e0)
+
+# Reflect point
+(3e1 + 2e2 + e3 - e0) * (e123 + 4e032 - 2e013 - e021) *(3e1 + 2e2 + e3 - e0)
+
+# Rotate plane
+(1 + 2e12 - 3e31 + 4e23) * (2e0 + 3e1 + 4e2 + 5e3) * (1 - 2e12 + 3e31 - 4e23)
+
+# Rotate point
+(1 + 2e12 - 3e31 + 4e23) * (2e123 + 3e032 + 4e013 + 5e021) * (1 - 2e12 + 3e31 - 4e23)
+
+# Rotate line
+(1 + 2e12 - 3e31 + 4e23) * (-e01 + 2e02 - 3e03 + 4e12 + 5e31 - 6e23) * (1 - 2e12 + 3e31 - 4e23)
+
+# Translate line
+(1 - 5e01 - 2e02 + 2e03) * (-e01 + 2e02 - 3e03 + 4e12 + 5e31 - 6e23) * (1 + 5e01 + 2e02 - 2e03)
+
+# Motorize line
+(2 - e12 + 3e31 + 4e23 - 5e01 - 2e02 + 2e03 - 3e0123) * (-e01 + 2e02 - 3e03 + 4e12 + 5e31 - 6e23) * (2 + e12 - 3e31 - 4e23 + 5e01 + 2e02 - 2e03 - 3e0123)
+
+# Motor plane
+(1 + 2e12 - 3e31 + 4e23 + 5e01 + 6e02 + 7e03 + 8e0123) * (2e0 + 3e1 + 4e2 + 5e3) * (1 - 2e12 + 3e31 - 4e23 - 5e01 - 6e02 - 7e03 + 8e0123)
+
+# Motor point
+(1 + 2e12 - 3e31 + 4e23 + 5e01 + 6e02 + 7e03 + 8e0123) * (2e123 + 3e032 + 4e013 + 5e021) * (1 - 2e12 + 3e31 - 4e23 - 5e01 - 6e02 - 7e03 + 8e0123)
+
+# Motor origin
+(1 + 2e12 - 3e31 + 4e23 + 5e01 + 6e02 + 7e03 + 8e0123) * e123 * (1 - 2e12 + 3e31 - 4e23 - 5e01 - 6e02 - 7e03 + 8e0123)
+
+# Rotor * rotor
+(2 + 3e23 + 4e31 + 5e12) * (6 + 7e23 + 8e31 + 9e12)
+
+# Motor * motor
+(2 + 3e23 + 4e31 + 5e12 + 6e01 + 7e02 + 8e03 + 9e0123) * (6 + 7e23 + 8e31 + 9e12 + 10e01 + 11e02 + 12e03 + 13e0123)
+
+# Branch * Branch
+(e23 - 2e31 - 3e12) * (2e23 + e31 + 3e12)
