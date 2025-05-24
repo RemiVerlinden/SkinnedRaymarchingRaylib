@@ -7,5 +7,7 @@
 
 
 #include "globalvars.h"
+#include "structs.h"
+#include "utils.h"
 
 #endif // !COMMON_H

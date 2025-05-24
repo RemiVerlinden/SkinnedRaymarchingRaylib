@@ -28,6 +28,8 @@
 
 
 GlobalVars gGlobals;
+ScreenInfo gScreenInfo;
+SequenceInfo gAnimInfo;
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -36,24 +38,21 @@ int main(void)
 {
 	// Initialization
 	//--------------------------------------------------------------------------------------
-	const int screenWidth = 800;
-	const int screenHeight = 450;
 	
 	ChangeDirectory(RESOURCES_PATH);
 
-	InitWindow(screenWidth, screenHeight, "raylib [models] example - GPU skinning");
+	InitWindow(gScreenInfo.WIDTH, gScreenInfo.HEIGHT, "raylib [models] example - GPU skinning");
+
 
 	// Define the camera to look into our 3d world
-	Camera camera = { 0 };
-	camera.position = Vector3{ 5.0f, 5.0f, 5.0f }; // Camera position
-	camera.target = Vector3{ 0.0f, 2.0f, 0.0f };  // Camera looking at point
-	camera.up = Vector3{ 0.0f, 1.0f, 0.0f };      // Camera up vector (rotation towards target)
-	camera.fovy = 45.0f;                            // Camera field-of-view Y
-	camera.projection = CAMERA_PERSPECTIVE;         // Camera projection type
+	Camera camera = DQ::GetCamera();
 
 	// Load gltf model
-	Model characterModel = LoadModel("models/gltf/pirate/pirate.glb"); // Load character model
+	DQ::Model model;
+	model.raylib = LoadModel("models/gltf/pirate/pirate.glb"); // Load character model
 
+	Model& characterModel = model.raylib;
+	
 	// Load skinning shader
 	Shader skinningShader = LoadShader(TextFormat("shaders/glsl%i/LinearBlendSkinning.vs", GLSL_VERSION),
 		TextFormat("shaders/glsl%i/LinearBlendSkinning.fs", GLSL_VERSION));
@@ -61,9 +60,7 @@ int main(void)
 	characterModel.materials[1].shader = skinningShader;
 
 	// Load gltf model animations
-	int animsCount = 0;
-	unsigned int animIndex = 0;
-	ModelAnimation* modelAnimations = LoadModelAnimations("models/gltf/pirate/pirate.glb", &animsCount);
+	ModelAnimation* modelAnimations = LoadModelAnimations("models/gltf/pirate/pirate.glb", &gAnimInfo.total);
 
 	Vector3 position = { 0.0f, 0.0f, 0.0f }; // Set model position
 
@@ -80,13 +77,13 @@ int main(void)
 		UpdateCamera(&camera, CAMERA_FREE);
 
 		// Select current animation
-		if (IsKeyPressed(KEY_T)) animIndex = (animIndex + 1) % animsCount;
-		else if (IsKeyPressed(KEY_G)) animIndex = (animIndex + animsCount - 1) % animsCount;
+		if (IsKeyPressed(KEY_T)) gAnimInfo.index = (gAnimInfo.index + 1) % gAnimInfo.total;
+		else if (IsKeyPressed(KEY_G)) gAnimInfo.index = (gAnimInfo.index + gAnimInfo.total - 1) % gAnimInfo.total;
 		
 		if (IsKeyPressed(KEY_P)) gGlobals.paused = !gGlobals.paused;
 
 		// Update model animation
-		ModelAnimation anim = modelAnimations[animIndex];
+		ModelAnimation anim = modelAnimations[gAnimInfo.index];
 		unsigned int animCurrentFrame = gGlobals.frame % anim.frameCount;
 		characterModel.transform = MatrixTranslate(position.x, position.y, position.z);
 		characterModel.transform = MatrixScale(0.02, 0.02, 0.02);
@@ -119,7 +116,7 @@ int main(void)
 
 	// De-Initialization
 	//--------------------------------------------------------------------------------------
-	UnloadModelAnimations(modelAnimations, animsCount); // Unload model animation
+	UnloadModelAnimations(modelAnimations, gAnimInfo.total); // Unload model animation
 	UnloadModel(characterModel);    // Unload model and meshes/material
 	UnloadShader(skinningShader);   // Unload GPU skinning shader
 
