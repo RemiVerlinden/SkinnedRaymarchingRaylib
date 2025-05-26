@@ -45,21 +45,51 @@ RLAPI void DQ::UpdateModelAnimationBones(Model model, ModelAnimation anim, int f
 
         if (firstMeshWithBones != -1)
         {
-            // Update all bones and boneMatrices of first mesh with bones.
             for (int boneId = 0; boneId < anim.boneCount; boneId++)
             {
                 Transform& bindTransform = model.bindPose[boneId];
                 Transform& targetTransform = anim.framePoses[frame][boneId];
 
-                DQ::BoneTransform bindMotor = RaylibTransformToBoneTransform(bindTransform);
-                DQ::BoneTransform targetMotor = RaylibTransformToBoneTransform(targetTransform);
-                targetMotor.invert();
+                // ----------- TRANSFORM SPACE EXPLANATION -----------
+                // To drive the mesh with animation, we need to transform vertices from their **bind pose**
+                // (the default, unanimated pose stored in the model) to the **current animated pose**.
+                //
+                // Visually:
+                //      [bind pose] -----(animation delta)-----> [animated pose]
+                //
+                // In matrix math, the "animation delta" is:
+                //      deltaM = inverse(bindMatrix) * targetMatrix
+                //      (think: "undo bind pose, then apply animation pose")
+                //
+                // For dual quaternions (DQ), to rotate/transform a point 'p':
+                //      DQ * p * ~DQ   // Standard sandwich product
+                //
+                // However, due to our GLSL shader's conventions (klein library), the built-in DQ sandwich function
+                // applies DQ * p * ~DQ, which gives a mirrored/inverted rotation compared to our intended direction.
+                //
+                // To correct for this, we invert the target dual quaternion BEFORE composing it with the bind pose DQ,
+                // so that the resulting DQ is correct for the transformation we want:
+                //
+                //      [Correct way for our pipeline]:
+                //      bindToAnimationPoseDQ = targetDQ.inverted() * bindDQ
+                //      (Undo target pose, then apply bind pose, for correct relative orientation)
+                //
+                // This is visually akin to aligning the bone from its original rest pose to its new animated orientation.
 
+                DQ::BoneTransform bindDQ = RaylibTransformToBoneTransform(bindTransform);
+                DQ::BoneTransform targetDQ = RaylibTransformToBoneTransform(targetTransform);
+                targetDQ.invert();
 
-                DQ::BoneTransform finalMotor = targetMotor * bindMotor;
-                finalMotor.normalize();
-                static_cast<DQ::BoneTransform*>(model.meshes[firstMeshWithBones].boneMotors)[boneId] = finalMotor;
+                // Compute the dual quaternion that transforms from bind pose to current animation pose for this bone.
+                DQ::BoneTransform bindToAnimationPoseDQ = targetDQ * bindDQ;
+
+                // 'constrain()' is necessary to keep it rotating using the shortest arc, this is very important to fix artifacts from doing targetDQ * bindDQ
+                bindToAnimationPoseDQ.normalize();
+                bindToAnimationPoseDQ.constrain();
+
+                static_cast<DQ::BoneTransform*>(model.meshes[firstMeshWithBones].boneMotors)[boneId] = bindToAnimationPoseDQ;
             }
+
 
             // Update remaining meshes with bones
             // NOTE: Using deep copy because shallow copy results in double free with 'UnloadModel()'
