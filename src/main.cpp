@@ -125,10 +125,10 @@ int main(void)
 		unsigned int animCurrentFrame = gGlobals.frame % anim.frameCount;
 		//characterModel.transform = MatrixRotate({ position.x, position.y, position.z }, PI/4);
 		//characterModel.transform = MatrixScale(0.02, 0.02, 0.02);
-		DQ::UpdateModelAnimationBones(characterModel, anim, animCurrentFrame);
 
 		characterModel.materials[1].shader = gGlobals.toggleskinning ? DQSkinningShader : skinningShader;
 
+		DQ::UpdateModelAnimationBones(characterModel, anim, animCurrentFrame);
 
 		//----------------------------------------------------------------------------------
 

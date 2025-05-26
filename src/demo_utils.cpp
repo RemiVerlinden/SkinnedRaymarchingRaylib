@@ -106,7 +106,7 @@ RLAPI void DQ::UpdateModelAnimationBones(Model model, ModelAnimation anim, int f
     }
     if (gGlobals.toggleskinning)
     {
-        int loc = GetShaderLocation(model.materials[1].shader, "boneQuats");
+        int loc = GetShaderLocation(model.materials[1].shader, "boneDualQuaternions");
         SetShaderValueV(model.materials[1].shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
     }
 }

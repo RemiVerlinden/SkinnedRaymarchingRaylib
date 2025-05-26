@@ -276,12 +276,20 @@ in vec4 vertexBoneWeights;
 uniform mat4 mvp;
 uniform mat4 matNormal;
 uniform mat4 boneMatrices[MAX_BONE_NUM];
-uniform vec4 boneQuats[MAX_BONE_NUM*2];
+uniform vec4 boneDualQuaternions[MAX_BONE_NUM*2];
 
 // Output vertex attributes (to fragment shader)
 out vec2 fragTexCoord;
 out vec4 fragColor;
 out vec3 fragNormal;
+
+kln_motor GetMotor(int boneIndex)
+{
+    kln_motor m;
+        m.p1 = boneDualQuaternions[boneIndex*2];
+        m.p2 = boneDualQuaternions[boneIndex*2+1];
+    return m;
+}
 
 void main()
 {
@@ -289,40 +297,24 @@ void main()
     int boneIndex1 = int(vertexBoneIds.y);
     int boneIndex2 = int(vertexBoneIds.z);
     int boneIndex3 = int(vertexBoneIds.w);
-
-    kln_motor m1;
-        m1.p1 = boneQuats[boneIndex0*2];
-        m1.p2 = boneQuats[boneIndex0*2+1];
-    kln_motor m2;
-        m2.p1 = boneQuats[boneIndex1*2];
-        m2.p2 = boneQuats[boneIndex1*2+1];
-    kln_motor m3;
-        m3.p1 = boneQuats[boneIndex2*2];
-        m3.p2 = boneQuats[boneIndex2*2+1];
-    kln_motor m4;
-        m4.p1 = boneQuats[boneIndex3*2];
-        m4.p2 = boneQuats[boneIndex3*2+1];
     
     kln_motor interpolatedMotor = 
-    kln_add(kln_mul(m1, vertexBoneWeights.x)
-    ,kln_add(kln_mul(m2, vertexBoneWeights.y)
-    ,kln_add(kln_mul(m3, vertexBoneWeights.z)
-    ,kln_mul(m4, vertexBoneWeights.w))));
+    kln_add(kln_mul(GetMotor(boneIndex0), vertexBoneWeights.x)
+    ,kln_add(kln_mul(GetMotor(boneIndex1), vertexBoneWeights.y)
+    ,kln_add(kln_mul(GetMotor(boneIndex2), vertexBoneWeights.z)
+    ,kln_mul(GetMotor(boneIndex3), vertexBoneWeights.w))));
  
     kln_point originalPosition = kln_point(vec4(1.0,vertexPosition));
     kln_point skinnedPosition = kln_apply(interpolatedMotor, originalPosition);
 
-    vec4 skinnedNormal =
-        vertexBoneWeights.x*(boneMatrices[boneIndex0]*vec4(vertexNormal, 0.0)) +
-        vertexBoneWeights.y*(boneMatrices[boneIndex1]*vec4(vertexNormal, 0.0)) + 
-        vertexBoneWeights.z*(boneMatrices[boneIndex2]*vec4(vertexNormal, 0.0)) + 
-        vertexBoneWeights.w*(boneMatrices[boneIndex3]*vec4(vertexNormal, 0.0));
-    skinnedNormal.w = 0.0;
+    kln_point originalNormal = kln_point(vec4(0.0,vertexNormal));
+    kln_point skinnedNormal = kln_apply(interpolatedMotor, originalNormal);
+
 
     fragTexCoord = vertexTexCoord;
     fragColor = vertexColor;
 
-    fragNormal = normalize(vec3(matNormal*skinnedNormal));
+    fragNormal = normalize(vec3(matNormal*vec4(skinnedNormal.p3.yzw, skinnedNormal.p3.x)));
 
     gl_Position = mvp*vec4(skinnedPosition.p3.yzw, skinnedPosition.p3.x);
 }
