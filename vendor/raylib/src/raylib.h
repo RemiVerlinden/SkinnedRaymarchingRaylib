@@ -361,6 +361,7 @@ typedef struct Mesh {
     unsigned char *boneIds; // Vertex bone ids, max 255 bone ids, up to 4 bones influence by vertex (skinning) (shader-location = 6)
     float *boneWeights;     // Vertex bone weight, up to 4 bones influence by vertex (skinning) (shader-location = 7)
     Matrix *boneMatrices;   // Bones animated transformation matrices
+    void *boneMotors;       // We are just going to assume this is going to store an array of kln::motor types
     int boneCount;          // Number of bones
 
     // OpenGL identifiers

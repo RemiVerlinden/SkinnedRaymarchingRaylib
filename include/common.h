@@ -8,6 +8,6 @@
 
 #include "globalvars.h"
 #include "structs.h"
-#include "utils.h"
+#include "demo_utils.h"
 
 #endif // !COMMON_H

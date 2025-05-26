@@ -32,6 +32,9 @@ void main()
         vertexBoneWeights.y*(boneMatrices[boneIndex1]*vec4(vertexPosition, 1.0)) + 
         vertexBoneWeights.z*(boneMatrices[boneIndex2]*vec4(vertexPosition, 1.0)) + 
         vertexBoneWeights.w*(boneMatrices[boneIndex3]*vec4(vertexPosition, 1.0));
+        
+        
+        skinnedPosition = (boneMatrices[boneIndex0]*vec4(vertexPosition, 1.0));
 
     vec4 skinnedNormal =
         vertexBoneWeights.x*(boneMatrices[boneIndex0]*vec4(vertexNormal, 0.0)) +

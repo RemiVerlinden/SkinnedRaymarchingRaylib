@@ -7,11 +7,12 @@ struct GlobalVars
 	float frametime;
 	int frame;
 	bool paused;
+	bool toggleskinning;
 };
 // Amount of animations
 struct SequenceInfo
 {
-	int total;
+	int amount;
 	int index;
 };
 

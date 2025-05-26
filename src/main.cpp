@@ -27,6 +27,41 @@
 #endif
 
 
+void PrintM128(const __m128& v)
+{
+	const float* f = reinterpret_cast<const float*>(&v);
+	TraceLog(LOG_INFO, "%.2f %.2f %.2f %.2f", f[0], f[1], f[2], f[3]);
+}
+
+void PrintRotation(const Vector4& v)
+{
+	const float* f = reinterpret_cast<const float*>(&v);
+	TraceLog(LOG_INFO, "%.2f %.2f %.2f %.2f", f[0], f[1], f[2], f[3]);
+}
+
+void PrintTranslation(const Vector3& v)
+{
+	const float* f = reinterpret_cast<const float*>(&v);
+	TraceLog(LOG_INFO, "%.2f %.2f %.2f", f[0], f[1], f[2]);
+}
+
+void PrintMotor(const kln::motor& m)
+{
+	TraceLog(LOG_INFO, "p1_:");
+	PrintM128(m.p1_);
+	TraceLog(LOG_INFO, "p2_:");
+	PrintM128(m.p2_);
+}
+
+void PrintTransform(const Transform& t)
+{
+	TraceLog(LOG_INFO, "trans:");
+	PrintTranslation(t.translation);
+	TraceLog(LOG_INFO, "rot:");
+	PrintRotation(t.rotation);
+}
+
+
 GlobalVars gGlobals;
 ScreenInfo gScreenInfo;
 SequenceInfo gAnimInfo;
@@ -48,19 +83,20 @@ int main(void)
 	Camera camera = DQ::GetCamera();
 
 	// Load gltf model
-	DQ::Model model;
-	model.raylib = LoadModel("models/gltf/pirate/pirate.glb"); // Load character model
+	Model characterModel = DQ::LoadModel("models/gltf/pirate/pirate.glb"); // Load character model
 
-	Model& characterModel = model.raylib;
 	
 	// Load skinning shader
 	Shader skinningShader = LoadShader(TextFormat("shaders/glsl%i/LinearBlendSkinning.vs", GLSL_VERSION),
 		TextFormat("shaders/glsl%i/LinearBlendSkinning.fs", GLSL_VERSION));
 
-	characterModel.materials[1].shader = skinningShader;
+	Shader DQSkinningShader = LoadShader(TextFormat("shaders/glsl%i/DualQuaternionBlendSkinning.vs", GLSL_VERSION),
+		TextFormat("shaders/glsl%i/DualQuaternionBlendSkinning.fs", GLSL_VERSION));
+
+		characterModel.materials[1].shader = skinningShader;
 
 	// Load gltf model animations
-	ModelAnimation* modelAnimations = LoadModelAnimations("models/gltf/pirate/pirate.glb", &gAnimInfo.total);
+	ModelAnimation* modelAnimations = LoadModelAnimations("models/gltf/pirate/pirate.glb", &gAnimInfo.amount);
 
 	Vector3 position = { 0.0f, 0.0f, 0.0f }; // Set model position
 
@@ -72,23 +108,59 @@ int main(void)
 	// Main game loop
 	while (!WindowShouldClose())        // Detect window close button or ESC key
 	{
+		position = { 0,0,0 };
 		// Update
 		//----------------------------------------------------------------------------------
 		UpdateCamera(&camera, CAMERA_FREE);
 
 		// Select current animation
-		if (IsKeyPressed(KEY_T)) gAnimInfo.index = (gAnimInfo.index + 1) % gAnimInfo.total;
-		else if (IsKeyPressed(KEY_G)) gAnimInfo.index = (gAnimInfo.index + gAnimInfo.total - 1) % gAnimInfo.total;
+		if (IsKeyPressed(KEY_T)) gAnimInfo.index = (gAnimInfo.index + 1) % gAnimInfo.amount;
+		else if (IsKeyPressed(KEY_G)) gAnimInfo.index = (gAnimInfo.index + gAnimInfo.amount - 1) % gAnimInfo.amount;
 		
 		if (IsKeyPressed(KEY_P)) gGlobals.paused = !gGlobals.paused;
 
+		if (IsKeyPressed(KEY_F)) gGlobals.toggleskinning = !gGlobals.toggleskinning;
+		//	static int counter = 0;
+		//if (IsKeyPressed(KEY_V))
+		//{
+		//	counter++;
+		//}
+		//if(!gGlobals.toggleskinning)
+		//{
+		//	float* f = reinterpret_cast<float*>(&position);
+		//	f[counter%3] += 1;
+		//}
+		// 
 		// Update model animation
 		ModelAnimation anim = modelAnimations[gAnimInfo.index];
 		unsigned int animCurrentFrame = gGlobals.frame % anim.frameCount;
-		characterModel.transform = MatrixTranslate(position.x, position.y, position.z);
-		characterModel.transform = MatrixScale(0.02, 0.02, 0.02);
-		UpdateModelAnimationBones(characterModel, anim, animCurrentFrame);
+		//characterModel.transform = MatrixRotate({ position.x, position.y, position.z }, PI/4);
+		//characterModel.transform = MatrixScale(0.02, 0.02, 0.02);
+		DQ::UpdateModelAnimationBones(characterModel, anim, animCurrentFrame);
+
+		characterModel.materials[1].shader = gGlobals.toggleskinning ? DQSkinningShader : skinningShader;
+
+
 		//----------------------------------------------------------------------------------
+
+		//if (gGlobals.toggleskinning)
+		//{
+		//	for (size_t i = 0; i < characterModel.meshCount; i++)
+		//	{
+		//		for (size_t j = 0; j < characterModel.meshes[i].boneCount; j++)
+		//		{
+		//			DQ::BoneTransform t = static_cast<DQ::BoneTransform*>(characterModel.meshes[i].boneMotors)[j];
+
+		//			if (j != 7) continue;
+
+		//			TraceLog(LOG_INFO, TextFormat("- BONE %i - ", (int)j));
+		//			PrintMotor(t);
+		//			TraceLog(LOG_INFO, "- rotation & translation - ");
+		//			PrintTransform(characterModel.bindPose[j]);
+		//			TraceLog(LOG_INFO, "- - - - - - ");
+		//		}
+		//	}
+		//}
 
 		// Draw
 		//----------------------------------------------------------------------------------
@@ -99,7 +171,7 @@ int main(void)
 		BeginMode3D(camera);
 
 		// Draw character mesh, pose calculation is done in shader (GPU skinning)
-		DrawMesh(characterModel.meshes[0], characterModel.materials[1], characterModel.transform);
+		DQ::DrawMesh(characterModel.meshes[0], characterModel.materials[1], characterModel.transform);
 
 		DrawGrid(10, 1.0f);
 
@@ -116,9 +188,10 @@ int main(void)
 
 	// De-Initialization
 	//--------------------------------------------------------------------------------------
-	UnloadModelAnimations(modelAnimations, gAnimInfo.total); // Unload model animation
-	UnloadModel(characterModel);    // Unload model and meshes/material
+	UnloadModelAnimations(modelAnimations, gAnimInfo.amount); // Unload model animation
+	DQ::UnloadModel(characterModel);    // Unload model and meshes/material
 	UnloadShader(skinningShader);   // Unload GPU skinning shader
+	UnloadShader(DQSkinningShader);   // Unload GPU skinning shader
 
 	CloseWindow();                  // Close window and OpenGL context
 	//--------------------------------------------------------------------------------------
