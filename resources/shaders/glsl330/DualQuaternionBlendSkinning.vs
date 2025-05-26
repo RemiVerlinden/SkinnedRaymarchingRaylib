@@ -198,7 +198,9 @@ kln_point kln_apply(in kln_rotor r, in kln_point p)
     q.p3 += t3 * p.p3;
     return  q;
 }
-
+// THIS IS THE SANDWICH PRODUCT MP~M WHICH IS NOT WHAT WE WANT.
+// INSTEAD WE WANT ~MPM WHICH WILL RESULT IN CLOCKWISE ROTATION INSTEAD OF THE CURRENT COUNTERCLOCKWISE
+// WE FIX THIS BY INVERTING THE DUAL QUATERNION BEFORE SENDING IT TO THE GPU
 kln_point kln_apply(in kln_motor m, in kln_point p)
 {
     vec4 scale = vec4(0, 2, 2, 2);
@@ -309,7 +311,6 @@ void main()
  
     kln_point originalPosition = kln_point(vec4(1.0,vertexPosition));
     kln_point skinnedPosition = kln_apply(interpolatedMotor, originalPosition);
-    skinnedPosition = kln_apply(m1, originalPosition);
 
     vec4 skinnedNormal =
         vertexBoneWeights.x*(boneMatrices[boneIndex0]*vec4(vertexNormal, 0.0)) +

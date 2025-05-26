@@ -53,22 +53,12 @@ RLAPI void DQ::UpdateModelAnimationBones(Model model, ModelAnimation anim, int f
 
                 DQ::BoneTransform bindMotor = RaylibTransformToBoneTransform(bindTransform);
                 DQ::BoneTransform targetMotor = RaylibTransformToBoneTransform(targetTransform);
-                bindMotor.invert();
+                targetMotor.invert();
 
-                //Transform temp;
-                //temp.scale = Vector3{ 1, 1, 1 };
-                //temp.rotation = QuaternionFromAxisAngle({1,0,0},PI/4);
-                //temp.translation = Vector3{ 0,0,0 };
-                ////DQ::BoneTransform tempMotor = RaylibTransformToBoneTransform(model.bindPose[7]);
-                //DQ::BoneTransform tempMotor = RaylibTransformToBoneTransform(temp);
 
-                //tempMotor.invert();
-
-                DQ::BoneTransform finalMotor =  targetMotor * bindMotor;
+                DQ::BoneTransform finalMotor = targetMotor * bindMotor;
                 finalMotor.normalize();
-
                 static_cast<DQ::BoneTransform*>(model.meshes[firstMeshWithBones].boneMotors)[boneId] = finalMotor;
-                //static_cast<DQ::BoneTransform*>(model.meshes[firstMeshWithBones].boneMotors)[boneId] = tempMotor;
             }
 
             // Update remaining meshes with bones

@@ -120,17 +120,6 @@ int main(void)
 		if (IsKeyPressed(KEY_P)) gGlobals.paused = !gGlobals.paused;
 
 		if (IsKeyPressed(KEY_F)) gGlobals.toggleskinning = !gGlobals.toggleskinning;
-		//	static int counter = 0;
-		//if (IsKeyPressed(KEY_V))
-		//{
-		//	counter++;
-		//}
-		//if(!gGlobals.toggleskinning)
-		//{
-		//	float* f = reinterpret_cast<float*>(&position);
-		//	f[counter%3] += 1;
-		//}
-		// 
 		// Update model animation
 		ModelAnimation anim = modelAnimations[gAnimInfo.index];
 		unsigned int animCurrentFrame = gGlobals.frame % anim.frameCount;
@@ -143,24 +132,6 @@ int main(void)
 
 		//----------------------------------------------------------------------------------
 
-		//if (gGlobals.toggleskinning)
-		//{
-		//	for (size_t i = 0; i < characterModel.meshCount; i++)
-		//	{
-		//		for (size_t j = 0; j < characterModel.meshes[i].boneCount; j++)
-		//		{
-		//			DQ::BoneTransform t = static_cast<DQ::BoneTransform*>(characterModel.meshes[i].boneMotors)[j];
-
-		//			if (j != 7) continue;
-
-		//			TraceLog(LOG_INFO, TextFormat("- BONE %i - ", (int)j));
-		//			PrintMotor(t);
-		//			TraceLog(LOG_INFO, "- rotation & translation - ");
-		//			PrintTransform(characterModel.bindPose[j]);
-		//			TraceLog(LOG_INFO, "- - - - - - ");
-		//		}
-		//	}
-		//}
 
 		// Draw
 		//----------------------------------------------------------------------------------
