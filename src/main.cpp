@@ -137,7 +137,7 @@ int main(void)
 		//----------------------------------------------------------------------------------
 		BeginDrawing();
 
-		ClearBackground(RAYWHITE);
+		ClearBackground(BLACK);
 
 		BeginMode3D(camera);
 
@@ -149,6 +149,16 @@ int main(void)
 		EndMode3D();
 
 		DrawText("Use the T/G to switch animation", 10, 10, 20, GRAY);
+		DrawText("press F to toggle skinning mode", 10, 30, 20, GRAY);
+		DrawText("press P to pause", 10, 50, 20, GRAY);
+		if (!gGlobals.toggleskinning)
+		{
+			DrawText("LINEAR BLEND SKINNING", 10, 70, 20, GREEN);
+		}
+		else
+		{
+			DrawText("DUAL QUAT BLEND SKINNING", 10, 70, 20, SKYBLUE);
+		}
 
 		EndDrawing();
 		//----------------------------------------------------------------------------------
