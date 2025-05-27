@@ -6,7 +6,6 @@
 #include <klein\klein.hpp>
 
 
-#include "globalvars.h"
 #include "structs.h"
 #include "demo_utils.h"
 

@@ -1,11 +1,30 @@
 #include "demo_utils.h"
 #include "raylib.h"
-#include "types.h"
-#include "raymath_typecast.h"
-#include "globalvars.h"
 #include "raymath.h"
+#include <cstring>
+#include <klein\klein.hpp>
 
-extern GlobalVars gGlobals;
+// HELPER FUNCTIONS FOR THIS CPP COMP UNIT
+//------------------------------------------------------------------------------------------
+
+__m128 quaternion_to_m128(const Quaternion& q) noexcept
+{
+    return _mm_set_ps(q.z, q.y, q.x, q.w);
+}
+
+kln::motor RaylibTransformToBoneTransform(const Transform& t) noexcept
+{
+    kln::rotor rotor(quaternion_to_m128(t.rotation));
+
+    Vector4 position = { 0,t.translation.x, t.translation.y, t.translation.z };
+    position /= 2;
+    kln::translator translator{};
+    translator.load_normalized(reinterpret_cast<float*>(&position));
+    return rotor * translator;
+}
+
+
+//------------------------------------------------------------------------------------------
 
 Camera DQ::GetCamera()
 {
@@ -76,18 +95,18 @@ RLAPI void DQ::UpdateModelAnimationBones(Model model, ModelAnimation anim, int f
                 //
                 // This is visually akin to aligning the bone from its original rest pose to its new animated orientation.
 
-                DQ::BoneTransform bindDQ = RaylibTransformToBoneTransform(bindTransform);
-                DQ::BoneTransform targetDQ = RaylibTransformToBoneTransform(targetTransform);
+                kln::motor bindDQ = RaylibTransformToBoneTransform(bindTransform);
+                kln::motor targetDQ = RaylibTransformToBoneTransform(targetTransform);
                 targetDQ.invert();
 
                 // Compute the dual quaternion that transforms from bind pose to current animation pose for this bone.
-                DQ::BoneTransform bindToAnimationPoseDQ = targetDQ * bindDQ;
+                kln::motor bindToAnimationPoseDQ = targetDQ * bindDQ;
 
                 // 'constrain()' is necessary to keep it rotating using the shortest arc, this is very important to fix artifacts from doing targetDQ * bindDQ
                 bindToAnimationPoseDQ.normalize();
                 bindToAnimationPoseDQ.constrain();
 
-                static_cast<DQ::BoneTransform*>(model.meshes[firstMeshWithBones].boneMotors)[boneId] = bindToAnimationPoseDQ;
+                static_cast<kln::motor*>(model.meshes[firstMeshWithBones].boneMotors)[boneId] = bindToAnimationPoseDQ;
             }
 
 
@@ -99,16 +118,12 @@ RLAPI void DQ::UpdateModelAnimationBones(Model model, ModelAnimation anim, int f
                 {
                     memcpy(model.meshes[i].boneMotors,
                         model.meshes[firstMeshWithBones].boneMotors,
-                        model.meshes[i].boneCount * sizeof(DQ::BoneTransform));
+                        model.meshes[i].boneCount * sizeof(kln::motor));
                 }
             }
         }
     }
-    if (gGlobals.toggleskinning)
-    {
-        int loc = GetShaderLocation(model.materials[1].shader, "boneDualQuaternions");
-        SetShaderValueV(model.materials[1].shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
-    }
+
 }
 
 void DQ::DrawMesh(Mesh mesh, Material material, Matrix transform)
@@ -124,7 +139,7 @@ Model DQ::LoadModel(const char* fileName)
 
     for (unsigned int meshIndex = 0; meshIndex < model.meshCount; meshIndex++)
     {
-        model.meshes[meshIndex].boneMotors = new DQ::BoneTransform[model.meshes[meshIndex].boneCount];
+        model.meshes[meshIndex].boneMotors = new kln::motor[model.meshes[meshIndex].boneCount];
 
         meshIndex++; // Move to next mesh
     }
@@ -135,7 +150,7 @@ Model DQ::LoadModel(const char* fileName)
 void DQ::UnloadModel(Model model)
 {
 		for (unsigned int meshIndex = 0; meshIndex < model.meshCount; meshIndex++)
-			delete[] static_cast<DQ::BoneTransform*>(model.meshes[meshIndex].boneMotors);
+			delete[] static_cast<kln::motor*>(model.meshes[meshIndex].boneMotors);
 
         ::UnloadModel(model);
 }
