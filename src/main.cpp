@@ -1,33 +1,26 @@
 ﻿/*******************************************************************************************
 *
-*   raylib [core] example - Doing skinning on the gpu using a vertex shader
+*   Doing skinning on the gpu using a vertex shader
 *
-*   Example complexity rating: [★★★☆] 3/4
+*   
 *
 *   Example originally created with raylib 4.5, last time updated with raylib 4.5
 *
-*   Example contributed by Daniel Holden (@orangeduck) and reviewed by Ramon Santamaria (@raysan5)
+*   
 *
-*   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
-*   BSD-like license that allows static linking with closed source software
+*   
+*   
 *
-*   Copyright (c) 2024-2025 Daniel Holden (@orangeduck)
+*   
 *
-*   Note: Due to limitations in the Apple OpenGL driver, this feature does not work on MacOS
+*   Note: This was built upon the raylib GPU skinning example project
 *
 ********************************************************************************************/
 
 
 #include "common.h"
 #include "DemoScene.h"
-
 #include "structs.h"
-
-#if defined(PLATFORM_DESKTOP)
-#define GLSL_VERSION            330
-#else   // PLATFORM_ANDROID, PLATFORM_WEB
-#define GLSL_VERSION            100
-#endif
 
 struct ScreenInfo
 {
@@ -47,7 +40,7 @@ int main(void)
 
 	ChangeDirectory(RESOURCES_PATH);
 
-	InitWindow(gScreenInfo.WIDTH, gScreenInfo.HEIGHT, "raylib [models] example - GPU skinning");
+	InitWindow(gScreenInfo.WIDTH, gScreenInfo.HEIGHT, "Raymarching skinned meshes DEMO");
 
 	DisableCursor();                    // Limit cursor to relative movement inside the window
 	SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
@@ -62,15 +55,17 @@ int main(void)
 	{
 		{
 			static DQ::UpdateContext context;
+			static bool pause;
+			if (IsKeyPressed(KEY_P)) pause = !pause;
+			if (!pause)
+			{
+				context.frame++;
+				context.timestep = GetFrameTime();
+			}
+
 
 			scene.Update(context);
 			scene.Draw();
-		
-		
-			static bool pause;
-			if (IsKeyPressed(KEY_P)) pause = !pause;
-
-			if(!pause)	context.frame++;
 		}
 	}
 	//----------------------------------------------------------------------------------

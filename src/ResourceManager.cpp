@@ -19,8 +19,12 @@ void DQ::ResourceManager::LoadAllShaders()
 	Shader DQSkinningShader = LoadShader(TextFormat("shaders/glsl%i/DualQuaternionBlendSkinning.vs", GLSL_VERSION),
 		TextFormat("shaders/glsl%i/DualQuaternionBlendSkinning.fs", GLSL_VERSION));
 
+	Shader RaymarchingShader = LoadShader(TextFormat("shaders/glsl%i/raymarching.vert", GLSL_VERSION),
+		TextFormat("shaders/glsl%i/raymarching.frag", GLSL_VERSION));
+
 	m_Shaders.push_back(skinningShader);
 	m_Shaders.push_back(DQSkinningShader);
+	m_Shaders.push_back(RaymarchingShader);
 }
 
 void DQ::ResourceManager::LoadModel(const char* fileName)

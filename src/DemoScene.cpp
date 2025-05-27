@@ -1,10 +1,15 @@
 #include "DemoScene.h"
 #include "demo_utils.h"
+#include "rcamera.h"
+#include "raymath.h"
+
 
 namespace DQ
 {
 void BeginDrawing(Camera& camera);
 void EndDrawing(bool toggleSkinning);
+Vector3 GetClippingvolumePosition(Camera& camera);
+
 }
 
 
@@ -18,9 +23,10 @@ void DQ::DemoScene::Init()
 
 void DQ::DemoScene::Update(UpdateContext const& context)
 {
-	if (IsKeyPressed(KEY_F)) ++m_ActiveShader %= ShaderTypes::TOTALTYPES;
-	if (IsKeyPressed(KEY_T)) m_ActiveAnimation++;
-	if (IsKeyPressed(KEY_G)) m_ActiveAnimation--;
+	if (IsKeyPressed(KEY_F))			++m_ActiveShader %= ShaderTypes::TOTALTYPES;
+	if (IsKeyPressed(KEY_T))			m_ActiveAnimation++;
+	if (IsKeyPressed(KEY_G))			m_ActiveAnimation--;
+
 
 	UpdateCamera(&m_Camera, CAMERA_FREE);
 	//------------------------------------------------------------
@@ -35,11 +41,25 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	//------------------------------------------------------------
 	// UPDATE SHADER 
 	modeldata.model.materials[1].shader = shader;
+	Model const& model					= modeldata.model;
 	if (m_ActiveShader == ShaderTypes::DUALQUATERNIONBLENDSKINNING)
 	{
-		Model const& model = modeldata.model;
-		int loc = GetShaderLocation(model.materials[1].shader, "boneDualQuaternions");
-		SetShaderValueV(model.materials[1].shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
+		int loc							= GetShaderLocation(shader, "boneDualQuaternions"); // this should not be done every frame, only once and cache
+		SetShaderValueV(shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
+	}
+	else if (m_ActiveShader == ShaderTypes::RAYMARCHING)
+	{
+		Vector3 clippingVolumePosition = GetClippingvolumePosition(m_Camera);
+		int loc	= GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
+		SetShaderValueV(shader, loc, &clippingVolumePosition, SHADER_UNIFORM_VEC3, 1);
+
+		
+		Vector3 clippingVolumeScale{0.05,0.05,0.15 };
+		loc		= GetShaderLocation(shader, "clippingVolumeScale"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &clippingVolumeScale, SHADER_UNIFORM_VEC3, 1);
+
+		loc = GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
 	}
 	//------------------------------------------------------------
 
@@ -98,5 +118,20 @@ namespace DQ
 		}
 
 		::EndDrawing();
+	}
+
+	Vector3 GetClippingvolumePosition(Camera& camera)
+	{
+		static Vector3 clippingVolumePosition{ 0, 1, 0 };
+		Vector3 wishDir{};
+		if (IsKeyDown(KEY_I))  wishDir += GetCameraForward(&camera);
+		if (IsKeyDown(KEY_L)) wishDir += GetCameraRight(&camera);
+		if (IsKeyDown(KEY_K)) wishDir -= GetCameraForward(&camera);
+		if (IsKeyDown(KEY_J)) wishDir -= GetCameraRight(&camera);
+
+		const float MOVESPEED = 1.f;
+		clippingVolumePosition += wishDir * MOVESPEED * GetFrameTime();
+
+		return clippingVolumePosition;
 	}
 }

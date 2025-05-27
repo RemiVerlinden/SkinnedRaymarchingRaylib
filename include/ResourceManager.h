@@ -11,6 +11,7 @@ namespace DQ {
     {
         LINEARBLENDSKINNING = 0,
         DUALQUATERNIONBLENDSKINNING,
+        RAYMARCHING,
         TOTALTYPES
         //FX_FXAA
     } ShaderTypes;
