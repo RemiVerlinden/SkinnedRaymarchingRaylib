@@ -2,16 +2,16 @@
 *
 *   Doing skinning on the gpu using a vertex shader
 *
-*   
+*
 *
 *   Example originally created with raylib 4.5, last time updated with raylib 4.5
 *
-*   
 *
-*   
-*   
 *
-*   
+*
+*
+*
+*
 *
 *   Note: This was built upon the raylib GPU skinning example project
 *
@@ -22,6 +22,8 @@
 #include "DemoScene.h"
 #include "structs.h"
 
+#include "glfw_util.h"
+#
 struct ScreenInfo
 {
 	const int WIDTH = 900;
@@ -41,6 +43,8 @@ int main(void)
 	ChangeDirectory(RESOURCES_PATH);
 
 	InitWindow(gScreenInfo.WIDTH, gScreenInfo.HEIGHT, "Raymarching skinned meshes DEMO");
+
+	DQ::SetCustomCursor();
 
 	DisableCursor();                    // Limit cursor to relative movement inside the window
 	SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
@@ -72,7 +76,7 @@ int main(void)
 
 	// De-Initialization
 	//--------------------------------------------------------------------------------------
-
+	
 	scene.Shutdown();
 	CloseWindow();                  // Close window and OpenGL context
 	//--------------------------------------------------------------------------------------
