@@ -4,6 +4,7 @@
 #include "raymath.h"
 
 #include <raygizmo.h>
+#include "rlgl.h"
 
 Transform clippingVolumeGizmoTransform = GizmoIdentity();
 
@@ -11,14 +12,15 @@ Transform clippingVolumeGizmoTransform = GizmoIdentity();
 namespace DQ
 {
 	void BeginDrawing(Camera& camera);
-	void EndDrawing(bool toggleSkinning);
-	Vector3 GetClippingvolumePosition(Camera& camera);
+	void EndDrawing(ShaderTypes activeShader);
+	void DrawEllipsoidWires(Transform transform, int rings, int slices, Color color);
 
 }
 
 void DQ::DemoScene::Init()
 {
 	m_Camera = DQ::GetCamera();
+	clippingVolumeGizmoTransform.translation = { 0,1,0 };
 	clippingVolumeGizmoTransform.scale = { 0.10,0.15,0.20 };
 
 	m_ResourceManager.LoadAllShaders();
@@ -60,16 +62,11 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	}
 	else if (m_ActiveShader == ShaderTypes::RAYMARCHING)
 	{
-		Vector3 position, scale;
-		Quaternion rotation;
-		MatrixDecompose(GizmoToMatrix(clippingVolumeGizmoTransform), &position, &rotation, &scale);
-		int loc	= GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
-		SetShaderValueV(shader, loc, &position, SHADER_UNIFORM_VEC3, 1);
+		int loc = GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
+		SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
 
-		
-		//Vector3 scale{0.05,0.05,0.15 };
 		loc		= GetShaderLocation(shader, "clippingVolumeScale"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &scale, SHADER_UNIFORM_VEC3, 1);
+		SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.scale, SHADER_UNIFORM_VEC3, 1);
 
 		loc = GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
 		SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
@@ -90,11 +87,15 @@ void DQ::DemoScene::Draw()
 	{
 		if (m_ActiveShader == ShaderTypes::RAYMARCHING)
 		{
-			DrawGizmo3D(GIZMO_TRANSLATE | GIZMO_SCALE, &clippingVolumeGizmoTransform);
+			if (!IsCursorHidden())
+			{
+				DrawGizmo3D(GIZMO_TRANSLATE | GIZMO_SCALE, &clippingVolumeGizmoTransform);
+				DrawEllipsoidWires(clippingVolumeGizmoTransform, 8, 8, GREEN);
+			}
 		}
 	}
 
-	DQ::EndDrawing(m_ActiveShader);
+	DQ::EndDrawing(static_cast<ShaderTypes>(m_ActiveShader));
 
 }
 
@@ -118,24 +119,102 @@ namespace DQ
 		BeginMode3D(camera);
 	}
 
-	void EndDrawing(bool toggleSkinning)
+	void EndDrawing(ShaderTypes activeShader)
 	{
 		DrawGrid(10, 1.0f);
 
 		EndMode3D();
 
-		DrawText("Use the T/G to switch animation", 10, 10, 20, GRAY);
-		DrawText("press F to toggle skinning mode", 10, 30, 20, GRAY);
-		DrawText("press P to pause", 10, 50, 20, GRAY);
-		if (!toggleSkinning)
+		DrawText("T/G to switch animation", 10, 10, 20, GRAY);
+		DrawText("F to toggle skinning mode", 10, 32, 20, GRAY);
+		DrawText("P to pause", 10, 54, 20, GRAY);
+		DrawText("RIGHT CLICK to toggle camera controls", 10, 76, 20, GRAY);
+
+		switch (activeShader)
 		{
-			DrawText("LINEAR BLEND SKINNING", 10, 70, 20, GREEN);
+			case ShaderTypes::LINEARBLENDSKINNING:
+				DrawText("LINEAR BLEND SKINNING", 10, 110, 20, GREEN);
+				break;
+			case ShaderTypes::DUALQUATERNIONBLENDSKINNING:
+				DrawText("DUAL QUAT BLEND SKINNING", 10, 110, 20, SKYBLUE);
+				break;
+			case ShaderTypes::RAYMARCHING:
+				DrawText("STATIC RAYMARCH", 10, 110, 20, ORANGE);
+				break;
 		}
-		else
-		{
-			DrawText("DUAL QUAT BLEND SKINNING", 10, 70, 20, SKYBLUE);
-		}
+
 
 		::EndDrawing();
 	}
+
+
+
+	// Draw ellipsoid wires given a Transform, ring/slice counts, and color
+	// Transform encodes translation, rotation, and scale (where scale = ellipsoid radii)
+	void DrawEllipsoidWires(Transform transform, int rings, int slices, Color color)
+	{
+		// Decompose transform
+		Vector3 translation = transform.translation;
+		Quaternion rotation = transform.rotation;
+		Vector3 scale = transform.scale;
+
+		// Optional: convert quaternion to axis-angle for rlRotatef
+		Vector3 axis;
+		float angle;
+		QuaternionToAxisAngle(rotation, &axis, &angle);
+
+		rlPushMatrix();
+		// Apply scale -> rotate -> translate (inverse of matrix multiplication order)
+		rlTranslatef(translation.x, translation.y, translation.z);
+		rlRotatef(RAD2DEG * angle, axis.x, axis.y, axis.z);
+		rlScalef(scale.x, scale.y, scale.z);
+
+		rlBegin(RL_LINES);
+		rlColor4ub(color.r, color.g, color.b, color.a);
+
+		float ringAngle = DEG2RAD * (180.0f / (rings + 1));
+		float sliceAngle = DEG2RAD * (360.0f / slices);
+		float cosRing = cosf(ringAngle);
+		float sinRing = sinf(ringAngle);
+		float cosSlice = cosf(sliceAngle);
+		float sinSlice = sinf(sliceAngle);
+
+		Vector3 v2 = { 0.0f, 1.0f,      0.0f };
+		Vector3 v3 = { sinRing, cosRing, 0.0f };
+		Vector3 v0, v1;
+
+		for (int i = 0; i < rings + 2; i++)
+		{
+			for (int j = 0; j < slices; j++)
+			{
+				v0 = v2; v1 = v3;
+
+				// Rotate around Y axis
+				Vector3 tmp = v2;
+				v2.x = cosSlice * tmp.x - sinSlice * tmp.z;
+				v2.y = tmp.y;
+				v2.z = sinSlice * tmp.x + cosSlice * tmp.z;
+
+				tmp = v3;
+				v3.x = cosSlice * tmp.x - sinSlice * tmp.z;
+				v3.y = tmp.y;
+				v3.z = sinSlice * tmp.x + cosSlice * tmp.z;
+
+				// Draw wires
+				rlVertex3f(v0.x, v0.y, v0.z); rlVertex3f(v1.x, v1.y, v1.z);
+				rlVertex3f(v1.x, v1.y, v1.z); rlVertex3f(v3.x, v3.y, v3.z);
+				rlVertex3f(v0.x, v0.y, v0.z); rlVertex3f(v2.x, v2.y, v2.z);
+			}
+			// Step latitude (rotate around Z axis)
+			Vector3 start = v3;
+			v2 = start;
+			v3.x = cosRing * start.x + sinRing * start.y;
+			v3.y = -sinRing * start.x + cosRing * start.y;
+			v3.z = start.z;
+		}
+		rlEnd();
+		rlPopMatrix();
+	}
 }
+
+
