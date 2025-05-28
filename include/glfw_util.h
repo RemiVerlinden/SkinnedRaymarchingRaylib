@@ -1,8 +1,8 @@
-#ifndef WIN32UTIL_H
-#define WIN32UTIL_H
+#ifndef GLFWUTIL_H
+#define GLFWUTIL_H
 
 namespace DQ {
 	void SetCustomCursor();
 }
 
-#endif // !WIN32UTIL_H
+#endif // !GLFWUTIL_H
