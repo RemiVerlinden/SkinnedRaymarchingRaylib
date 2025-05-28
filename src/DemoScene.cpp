@@ -3,19 +3,23 @@
 #include "rcamera.h"
 #include "raymath.h"
 
+#include <raygizmo.h>
+
+Transform clippingVolumeGizmoTransform = GizmoIdentity();
+
 
 namespace DQ
 {
-void BeginDrawing(Camera& camera);
-void EndDrawing(bool toggleSkinning);
-Vector3 GetClippingvolumePosition(Camera& camera);
+	void BeginDrawing(Camera& camera);
+	void EndDrawing(bool toggleSkinning);
+	Vector3 GetClippingvolumePosition(Camera& camera);
 
 }
-
 
 void DQ::DemoScene::Init()
 {
 	m_Camera = DQ::GetCamera();
+	clippingVolumeGizmoTransform.scale = { 0.10,0.15,0.20 };
 
 	m_ResourceManager.LoadAllShaders();
 	m_ResourceManager.LoadModel("models/gltf/pirate/pirate.glb");
@@ -27,8 +31,15 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	if (IsKeyPressed(KEY_T))			m_ActiveAnimation++;
 	if (IsKeyPressed(KEY_G))			m_ActiveAnimation--;
 
+	// Toggle camera controls
+	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+	{
+		if (IsCursorHidden()) EnableCursor();
+		else DisableCursor();
+	}
 
-	UpdateCamera(&m_Camera, CAMERA_FREE);
+	if (IsCursorHidden()) UpdateCamera(&m_Camera, CAMERA_FREE);          // Update camera
+
 	//------------------------------------------------------------
 	// FETCH SHADER AND MODEL DATA
 	Shader shader						= m_ResourceManager.GetShaders().at(m_ActiveShader);
@@ -49,14 +60,16 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	}
 	else if (m_ActiveShader == ShaderTypes::RAYMARCHING)
 	{
-		Vector3 clippingVolumePosition = GetClippingvolumePosition(m_Camera);
+		Vector3 position, scale;
+		Quaternion rotation;
+		MatrixDecompose(GizmoToMatrix(clippingVolumeGizmoTransform), &position, &rotation, &scale);
 		int loc	= GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
-		SetShaderValueV(shader, loc, &clippingVolumePosition, SHADER_UNIFORM_VEC3, 1);
+		SetShaderValueV(shader, loc, &position, SHADER_UNIFORM_VEC3, 1);
 
 		
-		Vector3 clippingVolumeScale{0.05,0.05,0.15 };
+		//Vector3 scale{0.05,0.05,0.15 };
 		loc		= GetShaderLocation(shader, "clippingVolumeScale"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &clippingVolumeScale, SHADER_UNIFORM_VEC3, 1);
+		SetShaderValueV(shader, loc, &scale, SHADER_UNIFORM_VEC3, 1);
 
 		loc = GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
 		SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
@@ -73,6 +86,12 @@ void DQ::DemoScene::Draw()
 		Model const& model = m_ResourceManager.GetModelData().model;
 
 		DQ::DrawMesh(model.meshes[0], model.materials[1], model.transform);
+	}
+	{
+		if (m_ActiveShader == ShaderTypes::RAYMARCHING)
+		{
+			DrawGizmo3D(GIZMO_TRANSLATE | GIZMO_SCALE, &clippingVolumeGizmoTransform);
+		}
 	}
 
 	DQ::EndDrawing(m_ActiveShader);
@@ -118,20 +137,5 @@ namespace DQ
 		}
 
 		::EndDrawing();
-	}
-
-	Vector3 GetClippingvolumePosition(Camera& camera)
-	{
-		static Vector3 clippingVolumePosition{ 0, 1, 0 };
-		Vector3 wishDir{};
-		if (IsKeyDown(KEY_I))  wishDir += GetCameraForward(&camera);
-		if (IsKeyDown(KEY_L)) wishDir += GetCameraRight(&camera);
-		if (IsKeyDown(KEY_K)) wishDir -= GetCameraForward(&camera);
-		if (IsKeyDown(KEY_J)) wishDir -= GetCameraRight(&camera);
-
-		const float MOVESPEED = 1.f;
-		clippingVolumePosition += wishDir * MOVESPEED * GetFrameTime();
-
-		return clippingVolumePosition;
 	}
 }
