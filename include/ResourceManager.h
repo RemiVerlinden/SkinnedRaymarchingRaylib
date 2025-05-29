@@ -4,6 +4,7 @@
 #include "raylib.h"
 #include "structs.h"
 #include <vector>
+#include <unordered_map>
 
 namespace DQ {
 
@@ -29,15 +30,18 @@ namespace DQ {
     public:
         void LoadAllShaders();
         void LoadModel(const char* fileName);
+        void LoadTextureSDF(const char* fileName);
 
         std::vector<Shader> const& GetShaders();
         CombinedModelData& GetModelData();
+        Texture GetTextureSDF();
 
         void Shutdown();
     private:
-
+        
         CombinedModelData m_ModelData;
         std::vector<Shader> m_Shaders;
+        Texture m_TextureBindPoseSDF; // need rework
     };
 }
 

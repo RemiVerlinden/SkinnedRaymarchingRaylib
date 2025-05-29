@@ -36,6 +36,11 @@ void DQ::ResourceManager::LoadModel(const char* fileName)
 
 	m_ModelData = modelData;
 }
+// need rework
+void DQ::ResourceManager::LoadTextureSDF(const char* fileName)
+{
+	m_TextureBindPoseSDF = ::LoadTexture(fileName);
+}
 
 std::vector<Shader> const& DQ::ResourceManager::GetShaders()
 {
@@ -47,11 +52,20 @@ DQ::CombinedModelData& DQ::ResourceManager::GetModelData()
 	return m_ModelData;
 }
 
+Texture DQ::ResourceManager::GetTextureSDF()
+{
+	return m_TextureBindPoseSDF;
+}
+
 void DQ::ResourceManager::Shutdown()
 {
-	auto& it = m_ModelData;
-
+	// needs rework, if we dont load the texture we unload anyways
 	{
+		::UnloadTexture(m_TextureBindPoseSDF);
+	}
+	{
+		auto& it = m_ModelData;
+
 		Model& model = it.model;
 		ModelAnimation* pAnimations = it.pAnimations;
 		int& animationCount = it.animcount;
