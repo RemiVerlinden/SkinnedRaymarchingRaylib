@@ -44,6 +44,12 @@ if (NOT ${PLATFORM} MATCHES "Web")
     include(GlfwImport)
 endif ()
 
+# Check if TinyEXR is available from parent project
+if(TARGET tinyexr)
+    message(STATUS "TinyEXR found as target, enabling EXR support")
+    set(SUPPORT_FILEFORMAT_EXR ON)
+endif()
+
 # Sets additional platform options and link libraries for each platform
 # also selects the proper graphics API and version for that platform
 # Produces a variable LIBS_PRIVATE that will be used later
@@ -92,6 +98,12 @@ if (BUILD_SHARED_LIBS)
 endif ()
 
 target_link_libraries(raylib "${LIBS_PRIVATE}")
+
+# Link TinyEXR if available
+if(TARGET tinyexr)
+    target_link_libraries(raylib tinyexr)
+    target_compile_definitions(raylib PRIVATE SUPPORT_FILEFORMAT_EXR)
+endif()
 
 # Sets some compile time definitions for the pre-processor
 # If CUSTOMIZE_BUILD option is on you will not use config.h by default

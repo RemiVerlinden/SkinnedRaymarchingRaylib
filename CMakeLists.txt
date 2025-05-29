@@ -39,11 +39,12 @@ set(BUILD_GAMES    OFF CACHE BOOL "" FORCE) # don't build the supplied example g
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 
+add_subdirectory(vendor/tinyexr)				# OpenEXR image loading support
+
 add_subdirectory(vendor/raylib)					# our core raylib framework
 #----------V-----------------------V------------#my libraries				
 add_subdirectory(vendor/klein)					# klein PGA math								
 add_subdirectory(vendor/raylib-gizmo)			# Gizmo support								
-add_subdirectory(vendor/tinyexr)			# Gizmo support								
 
 
 # MY_SOURCES is defined to be a list of all the source files for my game 
