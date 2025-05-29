@@ -46,6 +46,8 @@ int main(void)
 
 	DQ::SetCustomCursor();
 
+	SetConfigFlags(FLAG_MSAA_4X_HINT);  // Enable Multi Sampling Anti Aliasing 4x (if available)
+
 	DisableCursor();                    // Limit cursor to relative movement inside the window
 	SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
 
