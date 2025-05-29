@@ -300,7 +300,7 @@ Image LoadImage(const char* fileName)
 				int ret = ParseEXRVersionFromFile(&exr_version, fileName);
 				if (ret != 0)
 				{
-					fprintf(stderr, "Invalid EXR file: %s\n", fileName);
+					TRACELOG(LOG_WARNING, "IMAGE: Invalid EXR file: %s", fileName);
 					return image;
 				}
 			}
