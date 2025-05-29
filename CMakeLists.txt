@@ -43,6 +43,7 @@ add_subdirectory(vendor/raylib)					# our core raylib framework
 #----------V-----------------------V------------#my libraries				
 add_subdirectory(vendor/klein)					# klein PGA math								
 add_subdirectory(vendor/raylib-gizmo)			# Gizmo support								
+add_subdirectory(vendor/tinyexr)			# Gizmo support								
 
 
 # MY_SOURCES is defined to be a list of all the source files for my game 
@@ -100,4 +101,4 @@ target_include_directories("${CMAKE_PROJECT_NAME}" PUBLIC "${CMAKE_CURRENT_SOURC
 #	glad stb_image stb_truetype gl2d raudio imgui safeSave profilerLib enet glui)
 
 
-target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE raylib klein raygizmo)
+target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE raylib klein raygizmo tinyexr)
