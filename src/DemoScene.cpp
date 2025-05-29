@@ -26,6 +26,10 @@ void DQ::DemoScene::Init()
 	m_ResourceManager.LoadAllShaders();
 	m_ResourceManager.LoadModel("models/gltf/pirate/pirate.glb");
 	m_ResourceManager.LoadTextureSDF("textures/SDF/pirate_SDF_50U.exr");
+
+	int loc = GetShaderLocation(m_ResourceManager.GetShaders().at(ShaderTypes::RAYMARCHING), "bindPoseTextureSDF"); // this should not be done every frame, only once and cache 
+
+	TRACELOG(LOG_INFO, "RAYMARCH SHADER: loc | %i", loc);
 }
 
 void DQ::DemoScene::Update(UpdateContext const& context)
@@ -73,8 +77,8 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 		SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
 
 		Texture bindPoseSDF = m_ResourceManager.GetTextureSDF();
-		loc = GetShaderLocation(shader, "bindPoseSDF"); // this should not be done every frame, only once and cache 
-		//SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
+		loc = GetShaderLocation(shader, "bindPoseTextureSDF"); // this should not be done every frame, only once and cache 
+		SetShaderValueTexture(shader, loc, bindPoseSDF);
 	}
 	//------------------------------------------------------------
 

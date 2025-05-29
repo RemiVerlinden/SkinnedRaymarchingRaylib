@@ -7,6 +7,7 @@ in vec3 fragWorldPosition;
 out vec4 finalColor;
 
 uniform sampler2D texture0;
+uniform sampler2D bindPoseTextureSDF;
 uniform vec4 colDiffuse;
 
 uniform vec3 clippingVolumePosition;
@@ -20,6 +21,7 @@ float ellipsoidSDF(vec3 pos, vec3 center, vec3 radii) {
 void main() {
     // SDF: <0 inside ellipsoid
     float woundSDF = ellipsoidSDF(fragWorldPosition, clippingVolumePosition, clippingVolumeScale);
+    vec4 temp = texture(bindPoseTextureSDF, fragTexCoord);
 
     if (woundSDF >= 0.0) {
         // Outside the wound: render as normal
