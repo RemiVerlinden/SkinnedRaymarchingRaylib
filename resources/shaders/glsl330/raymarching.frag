@@ -57,6 +57,7 @@ void main() {
             break;
         }
         t += max(d, minStep);
+        t += max(abs(ellipsoidDist) * 0.5, minStep);
         if (t > maxDist) break;
     }
 

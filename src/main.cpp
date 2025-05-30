@@ -23,7 +23,10 @@
 #include "structs.h"
 
 #include "glfw_util.h"
-#
+
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+
 struct ScreenInfo
 {
 	const int WIDTH = 900;
@@ -39,7 +42,6 @@ int main(void)
 {
 	// Initialization
 	//--------------------------------------------------------------------------------------
-
 	ChangeDirectory(RESOURCES_PATH);
 
 	InitWindow(gScreenInfo.WIDTH, gScreenInfo.HEIGHT, "Raymarching skinned meshes DEMO");
@@ -83,5 +85,6 @@ int main(void)
 	CloseWindow();                  // Close window and OpenGL context
 	//--------------------------------------------------------------------------------------
 
+	_CrtDumpMemoryLeaks();
 	return 0;
 }
