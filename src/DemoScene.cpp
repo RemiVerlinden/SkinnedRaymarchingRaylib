@@ -29,9 +29,7 @@ void DQ::DemoScene::Init()
 
 	Model& model = m_ResourceManager.GetModelData().model;
 	model.materials[1].maps[MATERIAL_MAP_SDF].texture = m_ResourceManager.GetTextureSDF();
-	int loc = GetShaderLocation(m_ResourceManager.GetShaders().at(ShaderTypes::RAYMARCHING), "bindPoseTextureSDF"); // this should not be done every frame, only once and cache 
-
-	TRACELOG(LOG_INFO, "RAYMARCH SHADER: loc | %i", loc);
+	
 }
 
 void DQ::DemoScene::Update(UpdateContext const& context)
@@ -77,6 +75,15 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 
 		loc		= GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
 		SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
+		
+		// SDF bounds for 50U pirate mesh (from box_bounds.txt)
+		Vector3 minBounds{ -0.7175f, -0.0325f, -0.7275f };
+		Vector3 maxBounds{ 0.7225f, 1.4075f, 0.7125f };
+		// Set SDF bounds uniforms
+		loc = GetShaderLocation(shader, "minBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &minBounds, SHADER_UNIFORM_VEC3, 1);
+		loc = GetShaderLocation(shader, "maxBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &maxBounds, SHADER_UNIFORM_VEC3, 1);
 
 	}
 	//------------------------------------------------------------
