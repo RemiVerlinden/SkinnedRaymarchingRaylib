@@ -7,7 +7,7 @@ in vec3 fragWorldPosition;
 out vec4 finalColor;
 
 uniform sampler2D texture0;
-uniform sampler2D bindPoseTextureSDF;
+uniform sampler3D bindPose3DTextureSDF;
 uniform vec4 colDiffuse;
 
 uniform vec3 clippingVolumePosition;
@@ -21,7 +21,14 @@ float ellipsoidSDF(vec3 pos, vec3 center, vec3 radii) {
 void main() {
     // SDF: <0 inside ellipsoid
     float woundSDF = ellipsoidSDF(fragWorldPosition, clippingVolumePosition, clippingVolumeScale);
-    vec4 temp = texture(bindPoseTextureSDF, fragTexCoord);
+    // Convert world position to 3D texture coordinates (0-1 range)
+    vec3 sdfTexCoord = (fragWorldPosition - clippingVolumePosition) / clippingVolumeScale * 0.5 + 0.5;
+    
+    // fake "use" of bindPoseTextureSDF under a dynamic condition
+    if (gl_FragCoord.x < 0.0) {
+        // this never runs (frag coords are always >= 0)
+    }
+        vec4 _dummy = texture(bindPose3DTextureSDF, vec3(clippingVolumePosition));
 
     if (woundSDF >= 0.0) {
         // Outside the wound: render as normal
@@ -54,7 +61,7 @@ void main() {
     }
 
     if (hit) {
-        finalColor = vec4(1.0, 0.0, 0.0, 1.0); // Fullbright red
+        finalColor = vec4(0.0, 0.0, 0.0, 1.0) + _dummy; // Fullbright red
     } else {
         discard; // Ray missed ellipsoid entirely (shouldn't happen for wound pixels)
     }

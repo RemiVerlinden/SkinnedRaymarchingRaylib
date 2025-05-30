@@ -172,6 +172,7 @@
 #define RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE0  "texture0"          // texture0 (texture slot active 0)
 #define RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE1  "texture1"          // texture1 (texture slot active 1)
 #define RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE2  "texture2"          // texture2 (texture slot active 2)
+#define RL_DEFAULT_SHADER_SAMPLER3D_SDF_NAME_TEXTURE  "bindPose3DTextureSDF"          // CUSTOM CUSTOM (texture slot active 12)
 
 
 //------------------------------------------------------------------------------------
@@ -258,7 +259,7 @@
 
 // rmodels: Configuration values
 //------------------------------------------------------------------------------------
-#define MAX_MATERIAL_MAPS              12       // Maximum number of shader maps supported
+#define MAX_MATERIAL_MAPS              13       // Maximum number of shader maps supported - DEMO CUSTOM EXTENSION FROM 12 TO 13
 
 #ifdef RL_SUPPORT_MESH_GPU_SKINNING
 #define MAX_MESH_VERTEX_BUFFERS         9       // Maximum vertex buffers (VBO) per mesh

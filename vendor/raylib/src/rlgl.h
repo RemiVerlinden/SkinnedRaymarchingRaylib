@@ -653,6 +653,8 @@ RLAPI void rlDisableStatePointer(int vertexAttribType); // Disable attribute sta
 RLAPI void rlActiveTextureSlot(int slot);               // Select and active a texture slot
 RLAPI void rlEnableTexture(unsigned int id);            // Enable texture
 RLAPI void rlDisableTexture(void);                      // Disable texture
+RLAPI void rlEnableTexture3D(unsigned int id);          // Enable 3D texture
+RLAPI void rlDisableTexture3D(unsigned int id);         // Enable 3D texture
 RLAPI void rlEnableTextureCubemap(unsigned int id);     // Enable texture cubemap
 RLAPI void rlDisableTextureCubemap(void);               // Disable texture cubemap
 RLAPI void rlTextureParameters(unsigned int id, int param, int value); // Set texture parameters (filter, wrap)
@@ -751,7 +753,8 @@ RLAPI void rlDrawVertexArrayInstanced(int offset, int count, int instances); // 
 RLAPI void rlDrawVertexArrayElementsInstanced(int offset, int count, const void *buffer, int instances); // Draw vertex array elements with instancing
 
 // Textures management
-RLAPI unsigned int rlLoadTexture(const void *data, int width, int height, int format, int mipmapCount); // Load texture data
+RLAPI unsigned int rlLoadTexture(const void* data, int width, int height, int format, int mipmapCount); // Load texture data
+RLAPI unsigned int rlLoad3DTextureSDF(const void* data, int width, int height, int depth, int format, int mipmapCount); // DEMO CUSTOM EXTENSION
 RLAPI unsigned int rlLoadTextureDepth(int width, int height, bool useRenderBuffer); // Load depth texture/renderbuffer (to be attached to fbo)
 RLAPI unsigned int rlLoadTextureCubemap(const void *data, int size, int format, int mipmapCount); // Load texture cubemap data
 RLAPI void rlUpdateTexture(unsigned int id, int offsetX, int offsetY, int width, int height, int format, const void *data); // Update texture with new data on GPU
@@ -1707,6 +1710,24 @@ void rlDisableTexture(void)
     glDisable(GL_TEXTURE_2D);
 #endif
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+// Enable texture 3D - DEMO CUSTOM EXTENSION
+void rlEnableTexture3D(unsigned int id)
+{
+#if defined(GRAPHICS_API_OPENGL_11)
+    glEnable(GL_TEXTURE_3D);
+#endif
+    glBindTexture(GL_TEXTURE_3D, id);
+}
+
+// Disable texture 3D - DEMO CUSTOM EXTENSION
+void rlDisableTexture3D(void)
+{
+#if defined(GRAPHICS_API_OPENGL_11)
+    glDisable(GL_TEXTURE_3D);
+#endif
+    glBindTexture(GL_TEXTURE_3D, 0);
 }
 
 // Enable texture cubemap
@@ -3320,6 +3341,210 @@ unsigned int rlLoadTexture(const void *data, int width, int height, int format, 
 
     if (id > 0) TRACELOG(RL_LOG_INFO, "TEXTURE: [ID %i] Texture loaded successfully (%ix%i | %s | %i mipmaps)", id, width, height, rlGetPixelFormatName(format), mipmapCount);
     else TRACELOG(RL_LOG_WARNING, "TEXTURE: Failed to load texture");
+
+    return id;
+}
+
+unsigned int rlLoad3DTextureSDF(const void* data, int width, int height, int depth, int format, int mipmapCount)
+{
+    unsigned int id = 0;
+
+    glBindTexture(GL_TEXTURE_3D, 0);    // Free any old binding
+
+    // Check texture format support by OpenGL 1.1 (compressed textures not supported)
+#if defined(GRAPHICS_API_OPENGL_11)
+    if (format >= RL_PIXELFORMAT_COMPRESSED_DXT1_RGB)
+    {
+        TRACELOG(RL_LOG_WARNING, "GL: OpenGL 1.1 does not support GPU compressed texture formats");
+        return id;
+    }
+#else
+    if ((!RLGL.ExtSupported.texCompDXT) && ((format == RL_PIXELFORMAT_COMPRESSED_DXT1_RGB) || (format == RL_PIXELFORMAT_COMPRESSED_DXT1_RGBA) ||
+        (format == RL_PIXELFORMAT_COMPRESSED_DXT3_RGBA) || (format == RL_PIXELFORMAT_COMPRESSED_DXT5_RGBA)))
+    {
+        TRACELOG(RL_LOG_WARNING, "GL: DXT compressed texture format not supported");
+        return id;
+    }
+#if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
+    if ((!RLGL.ExtSupported.texCompETC1) && (format == RL_PIXELFORMAT_COMPRESSED_ETC1_RGB))
+    {
+        TRACELOG(RL_LOG_WARNING, "GL: ETC1 compressed texture format not supported");
+        return id;
+    }
+
+    if ((!RLGL.ExtSupported.texCompETC2) && ((format == RL_PIXELFORMAT_COMPRESSED_ETC2_RGB) || (format == RL_PIXELFORMAT_COMPRESSED_ETC2_EAC_RGBA)))
+    {
+        TRACELOG(RL_LOG_WARNING, "GL: ETC2 compressed texture format not supported");
+        return id;
+    }
+
+    if ((!RLGL.ExtSupported.texCompPVRT) && ((format == RL_PIXELFORMAT_COMPRESSED_PVRT_RGB) || (format == RL_PIXELFORMAT_COMPRESSED_PVRT_RGBA)))
+    {
+        TRACELOG(RL_LOG_WARNING, "GL: PVRT compressed texture format not supported");
+        return id;
+    }
+
+    if ((!RLGL.ExtSupported.texCompASTC) && ((format == RL_PIXELFORMAT_COMPRESSED_ASTC_4x4_RGBA) || (format == RL_PIXELFORMAT_COMPRESSED_ASTC_8x8_RGBA)))
+    {
+        TRACELOG(RL_LOG_WARNING, "GL: ASTC compressed texture format not supported");
+        return id;
+    }
+#endif
+#endif  // GRAPHICS_API_OPENGL_11
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glGenTextures(1, &id);              // Generate texture id
+
+    glBindTexture(GL_TEXTURE_3D, id);   // Bind 3D texture instead of 2D
+
+    // Reorganize 2D slice data into 3D texture layout
+    int slicesPerRow = (int)sqrtf((float)(depth));
+    int sliceSize = width / slicesPerRow;
+
+    unsigned char* volumeData = NULL;
+    if (data != NULL)
+    {
+        int bytesPerPixel = 0;
+        if (format == PIXELFORMAT_UNCOMPRESSED_R16G16B16A16) bytesPerPixel = 8; // Half-float RGBA
+        else if (format == PIXELFORMAT_UNCOMPRESSED_R16) bytesPerPixel = 2; // Half-float R single channel
+        else if (format == PIXELFORMAT_UNCOMPRESSED_R32G32B32A32) bytesPerPixel = 16; // Float RGBA
+        else if (format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8) bytesPerPixel = 4; // Byte RGBA
+        else bytesPerPixel = 4; // Default fallback
+
+        volumeData = (unsigned char*)RL_MALLOC(sliceSize * sliceSize * depth * bytesPerPixel);
+        unsigned char* srcData = (unsigned char*)data;
+
+        for (int slice = 0; slice < depth; slice++)
+        {
+            int sliceRow = slice / slicesPerRow;
+            int sliceCol = slice % slicesPerRow;
+
+            for (int y = 0; y < sliceSize; y++)
+            {
+                for (int x = 0; x < sliceSize; x++)
+                {
+                    // Source pixel location in the big 2D image
+                    int srcX = sliceCol * sliceSize + x;
+                    int srcY = sliceRow * sliceSize + y;
+                    int srcIndex = (srcY * width + srcX) * bytesPerPixel;
+
+                    // Destination pixel location in volume
+                    int dstIndex = (slice * sliceSize * sliceSize + y * sliceSize + x) * bytesPerPixel;
+
+                    // Copy pixel data
+                    for (int b = 0; b < bytesPerPixel; b++)
+                    {
+                        volumeData[dstIndex + b] = srcData[srcIndex + b];
+                    }
+                }
+            }
+        }
+    }
+
+    int mipWidth = sliceSize;
+    int mipHeight = sliceSize;
+    int mipDepth = depth;
+    int mipOffset = 0;          // Mipmap data offset, only used for tracelog
+
+    unsigned char* dataPtr = volumeData;
+
+    // Load the different mipmap levels
+    for (int i = 0; i < mipmapCount; i++)
+    {
+        unsigned int mipSize = rlGetPixelDataSize(mipWidth, mipHeight, format) * mipDepth; // 3D version
+
+        unsigned int glInternalFormat, glFormat, glType;
+        rlGetGlTextureFormats(format, &glInternalFormat, &glFormat, &glType);
+
+        TRACELOGD("TEXTURE: Load 3D mipmap level %i (%i x %i x %i), size: %i, offset: %i", i, mipWidth, mipHeight, mipDepth, mipSize, mipOffset);
+
+        if (glInternalFormat != 0)
+        {
+            if (format < RL_PIXELFORMAT_COMPRESSED_DXT1_RGB)
+                glTexImage3D(GL_TEXTURE_3D, i, glInternalFormat, mipWidth, mipHeight, mipDepth, 0, glFormat, glType, dataPtr);
+#if !defined(GRAPHICS_API_OPENGL_11)
+            else glCompressedTexImage3D(GL_TEXTURE_3D, i, glInternalFormat, mipWidth, mipHeight, mipDepth, 0, mipSize, dataPtr);
+#endif
+
+#if defined(GRAPHICS_API_OPENGL_33)
+            if (format == RL_PIXELFORMAT_UNCOMPRESSED_GRAYSCALE)
+            {
+                GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+                glTexParameteriv(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+            }
+            else if (format == RL_PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA)
+            {
+#if defined(GRAPHICS_API_OPENGL_21)
+                GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_ALPHA };
+#elif defined(GRAPHICS_API_OPENGL_33)
+                GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
+#endif
+                glTexParameteriv(GL_TEXTURE_3D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+            }
+#endif
+        }
+
+        mipWidth /= 2;
+        mipHeight /= 2;
+        mipDepth /= 2;
+        mipOffset += mipSize;       // Increment offset position to next mipmap
+        if (dataPtr != NULL) dataPtr += mipSize;         // Increment data pointer to next mipmap
+
+        // Security check for NPOT textures
+        if (mipWidth < 1) mipWidth = 1;
+        if (mipHeight < 1) mipHeight = 1;
+        if (mipDepth < 1) mipDepth = 1;
+    }
+
+    // Texture parameters configuration
+    // NOTE: glTexParameteri does NOT affect texture uploading, just the way it's used
+#if defined(GRAPHICS_API_OPENGL_ES2)
+    // NOTE: OpenGL ES 2.0 with no GL_OES_texture_npot support (i.e. WebGL) has limited NPOT support, so CLAMP_TO_EDGE must be used
+    if (RLGL.ExtSupported.texNPOT)
+    {
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);       // Set texture to repeat on x-axis
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);       // Set texture to repeat on y-axis
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);       // Set texture to repeat on z-axis
+    }
+    else
+    {
+        // NOTE: If using negative texture coordinates (LoadOBJ()), it does not work!
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);       // Set texture to clamp on x-axis
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);       // Set texture to clamp on y-axis
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);       // Set texture to clamp on z-axis
+    }
+#else
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);       // Use clamp to edge for SDF
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+#endif
+
+    // Magnification and minification filters
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  // Use linear for SDF
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+#if defined(GRAPHICS_API_OPENGL_33)
+    if (mipmapCount > 1)
+    {
+        // Activate Trilinear filtering if mipmaps are available
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, mipmapCount); // Required for user-defined mip count
+    }
+#endif
+
+    // At this point we have the texture loaded in GPU and texture parameters configured
+
+    // NOTE: If mipmaps were not in data, they are not generated automatically
+
+    // Unbind current texture
+    glBindTexture(GL_TEXTURE_3D, 0);
+
+    if (volumeData) RL_FREE(volumeData);
+
+    if (id > 0) TRACELOG(RL_LOG_INFO, "TEXTURE: [ID %i] 3D Texture loaded successfully (%ix%ix%i | %s | %i mipmaps)", id, sliceSize, sliceSize, depth, rlGetPixelFormatName(format), mipmapCount);
+    else TRACELOG(RL_LOG_WARNING, "TEXTURE: Failed to load 3D texture");
 
     return id;
 }

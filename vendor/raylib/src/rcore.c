@@ -1383,6 +1383,9 @@ Shader LoadShaderFromMemory(const char *vsCode, const char *fsCode)
         shader.locs[SHADER_LOC_MAP_DIFFUSE] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE0);  // SHADER_LOC_MAP_ALBEDO
         shader.locs[SHADER_LOC_MAP_SPECULAR] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE1); // SHADER_LOC_MAP_METALNESS
         shader.locs[SHADER_LOC_MAP_NORMAL] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE2);
+
+        // DEMO CUSTOM EXTENSION
+        shader.locs[SHADER_LOC_MAP_SDF] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER3D_SDF_NAME_TEXTURE);
     }
 
     return shader;

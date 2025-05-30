@@ -1538,6 +1538,7 @@ void DrawMesh(Mesh mesh, Material material, Matrix transform)
             if ((i == MATERIAL_MAP_IRRADIANCE) ||
                 (i == MATERIAL_MAP_PREFILTER) ||
                 (i == MATERIAL_MAP_CUBEMAP)) rlEnableTextureCubemap(material.maps[i].texture.id);
+            else if (i == MATERIAL_MAP_SDF) rlEnableTexture3D(material.maps[i].texture.id); // DEMO CUSTOM EXTENSION
             else rlEnableTexture(material.maps[i].texture.id);
 
             rlSetUniform(material.shader.locs[SHADER_LOC_MAP_DIFFUSE + i], &i, SHADER_UNIFORM_INT, 1);

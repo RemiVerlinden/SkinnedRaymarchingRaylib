@@ -766,7 +766,8 @@ typedef enum {
     MATERIAL_MAP_CUBEMAP,           // Cubemap material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
     MATERIAL_MAP_IRRADIANCE,        // Irradiance material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
     MATERIAL_MAP_PREFILTER,         // Prefilter material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
-    MATERIAL_MAP_BRDF               // Brdf material
+    MATERIAL_MAP_BRDF,              // Brdf material
+    MATERIAL_MAP_SDF                // CUSTOM DEMO SDF material (NOTE: Uses GL_TEXTURE_3D)
 } MaterialMapIndex;
 
 #define MATERIAL_MAP_DIFFUSE      MATERIAL_MAP_ALBEDO
@@ -800,6 +801,7 @@ typedef enum {
     SHADER_LOC_MAP_IRRADIANCE,      // Shader location: samplerCube texture: irradiance
     SHADER_LOC_MAP_PREFILTER,       // Shader location: samplerCube texture: prefilter
     SHADER_LOC_MAP_BRDF,            // Shader location: sampler2d texture: brdf
+    SHADER_LOC_MAP_SDF,             // Shader location: sampler3D texture: sdf - DEMO CUSTOM EXTENSION
     SHADER_LOC_VERTEX_BONEIDS,      // Shader location: vertex attribute: boneIds
     SHADER_LOC_VERTEX_BONEWEIGHTS,  // Shader location: vertex attribute: boneWeights
     SHADER_LOC_BONE_MATRICES,       // Shader location: array of matrices uniform: boneMatrices
@@ -1415,8 +1417,10 @@ RLAPI void ImageDrawTextEx(Image *dst, Font font, const char *text, Vector2 posi
 
 // Texture loading functions
 // NOTE: These functions require GPU access
-RLAPI Texture2D LoadTexture(const char *fileName);                                                       // Load texture from file into GPU memory (VRAM)
+RLAPI Texture2D LoadTexture(const char* fileName);                                                       // Load texture from file into GPU memory (VRAM)
+RLAPI Texture Load3DTextureSDF(const char* fileName);                                                     // DEMO CUSTOM EXTENSION
 RLAPI Texture2D LoadTextureFromImage(Image image);                                                       // Load texture from image data
+RLAPI Texture2D Load3DTextureSDFFromImage(Image image);                                                     // DEMO CUSTOM EXTENSION
 RLAPI TextureCubemap LoadTextureCubemap(Image image, int layout);                                        // Load cubemap from image, multiple image cubemap layouts supported
 RLAPI RenderTexture2D LoadRenderTexture(int width, int height);                                          // Load texture for rendering (framebuffer)
 RLAPI bool IsTextureValid(Texture2D texture);                                                            // Check if a texture is valid (loaded in GPU)

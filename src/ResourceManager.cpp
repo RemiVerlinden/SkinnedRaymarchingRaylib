@@ -1,8 +1,6 @@
 #include "ResourceManager.h"
-#include "ResourceManager.h"
-#include "ResourceManager.h"
-
 #include "demo_utils.h"
+#include <rlgl.h>
 
 #if defined(PLATFORM_DESKTOP)
 #define GLSL_VERSION            330
@@ -36,10 +34,15 @@ void DQ::ResourceManager::LoadModel(const char* fileName)
 
 	m_ModelData = modelData;
 }
-// need rework
+// Load 3D texture using raylib-style pipeline (copied and adapted from LoadTexture -> LoadTextureFromImage -> rlLoadTexture)
 void DQ::ResourceManager::LoadTextureSDF(const char* fileName)
 {
-	m_TextureBindPoseSDF = ::LoadTexture(fileName);
+    m_TextureBindPoseSDF = Load3DTextureSDF(fileName);
+    
+    if(m_TextureBindPoseSDF.id < 0)
+    {
+        TRACELOG(LOG_ERROR, "Failed to load EXR SDF texture: %s", fileName);
+    }
 }
 
 std::vector<Shader> const& DQ::ResourceManager::GetShaders()
@@ -52,7 +55,7 @@ DQ::CombinedModelData& DQ::ResourceManager::GetModelData()
 	return m_ModelData;
 }
 
-Texture DQ::ResourceManager::GetTextureSDF()
+Texture DQ::ResourceManager::GetTextureSDF() const
 {
 	return m_TextureBindPoseSDF;
 }

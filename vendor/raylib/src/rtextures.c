@@ -4216,6 +4216,44 @@ Texture2D LoadTextureFromImage(Image image)
 	return texture;
 }
 
+Texture Load3DTextureSDF(const char* fileName)
+{
+	Texture texture3D = { 0 };
+
+	Image image3D = LoadImage(fileName);
+
+	if (image3D.data != NULL)
+	{
+		texture3D = Load3DTextureSDFFromImage(image3D);
+		UnloadImage(image3D);
+	}
+
+	return texture3D;
+}
+// Load a texture from image data
+// NOTE: image is not unloaded, it must be done manually
+Texture2D Load3DTextureSDFFromImage(Image image)
+{
+	Texture texture = { 0 };
+
+	if ((image.width != 0) && (image.height != 0))
+	{
+		// Calculate 3D dimensions from 2D slice layout
+		// Formula: b^3 = a^2, so b = a^(2/3) where a is the 2D image dimension
+		int cubeSize = (int)powf((float)image.width, 2.0f / 3.0f);
+
+		texture.id = rlLoad3DTextureSDF(image.data, cubeSize, cubeSize, cubeSize, image.format, image.mipmaps);
+	}
+	else TRACELOG(LOG_WARNING, "IMAGE: Data is not valid to load 3D texture");
+
+	texture.width = image.width;   // Store original 2D dimensions for reference
+	texture.height = image.height;
+	texture.mipmaps = image.mipmaps;
+	texture.format = image.format;
+
+	return texture;
+}
+
 // Load cubemap from image, multiple image cubemap layouts supported
 TextureCubemap LoadTextureCubemap(Image image, int layout)
 {

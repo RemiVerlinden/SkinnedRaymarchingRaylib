@@ -34,14 +34,14 @@ namespace DQ {
 
         std::vector<Shader> const& GetShaders();
         CombinedModelData& GetModelData();
-        Texture GetTextureSDF();
+        Texture GetTextureSDF() const;
 
         void Shutdown();
     private:
-        
+
         CombinedModelData m_ModelData;
         std::vector<Shader> m_Shaders;
-        Texture m_TextureBindPoseSDF; // need rework
+        Texture m_TextureBindPoseSDF; // 3D texture stored as raylib Texture struct - need rework
     };
 }
 
