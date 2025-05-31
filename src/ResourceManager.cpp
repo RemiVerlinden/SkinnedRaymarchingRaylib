@@ -132,6 +132,9 @@ void DQ::ResourceManager::Shutdown()
 	{
 		::UnloadTexture(m_TextureBindPoseSDF);
 	}
+    {
+        for (int i = 0; i < m_Shaders.size(); i++) UnloadShader(m_Shaders[i]);
+    }
 	{
 		auto& it = m_ModelData;
 
