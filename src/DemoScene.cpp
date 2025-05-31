@@ -20,12 +20,15 @@ namespace DQ
 void DQ::DemoScene::Init()
 {
 	m_Camera = DQ::GetCamera();
-	clippingVolumeGizmoTransform.translation = { 0,1,0 };
-	clippingVolumeGizmoTransform.scale = { 0.10,0.15,0.20 };
+	clippingVolumeGizmoTransform.translation = { 0,0.92,0 };
+	clippingVolumeGizmoTransform.scale = { 0.15,0.20,0.15 };
 
 	m_ResourceManager.LoadAllShaders();
 	m_ResourceManager.LoadModel("models/gltf/pirate/pirate.glb");
 	m_ResourceManager.LoadTextureSDF("textures/SDF/pirate_SDF_50U.exr");
+	
+	// Debug: Save the loaded image data to verify loading
+	//m_ResourceManager.DebugSaveImageData("textures/SDF/pirate_SDF_50U.exr", "debug_pirate_sdf.png");
 
 	Model& model = m_ResourceManager.GetModelData().model;
 	model.materials[1].maps[MATERIAL_MAP_SDF].texture = m_ResourceManager.GetTextureSDF();
@@ -84,6 +87,10 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 		SetShaderValueV(shader, loc, &minBounds, SHADER_UNIFORM_VEC3, 1);
 		loc = GetShaderLocation(shader, "maxBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
 		SetShaderValueV(shader, loc, &maxBounds, SHADER_UNIFORM_VEC3, 1);
+
+		float time = GetTime();
+		loc = GetShaderLocation(shader, "time"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &time, SHADER_UNIFORM_FLOAT, 1);
 
 	}
 	//------------------------------------------------------------

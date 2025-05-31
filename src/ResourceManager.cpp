@@ -45,6 +45,72 @@ void DQ::ResourceManager::LoadTextureSDF(const char* fileName)
     }
 }
 
+void DQ::ResourceManager::DebugSaveImageData(const char* fileName, const char* outputFileName)
+{
+    Image loadedImage = LoadImage(fileName);
+    
+    if (loadedImage.data == NULL)
+    {
+        TRACELOG(LOG_ERROR, "Failed to load image for debug: %s", fileName);
+        return;
+    }
+    
+    TRACELOG(LOG_INFO, "Debug: Loaded image %dx%d, format: %d, mipmaps: %d", 
+             loadedImage.width, loadedImage.height, loadedImage.format, loadedImage.mipmaps);
+    
+    // Convert to a simple format for saving
+    Image debugImage = { 0 };
+    
+    //if (loadedImage.format == PIXELFORMAT_UNCOMPRESSED_R32G32B32A32)
+    //{
+    //    // Convert from 32-bit float RGBA to 8-bit grayscale (using R channel)
+    //    debugImage.width = loadedImage.width;
+    //    debugImage.height = loadedImage.height;
+    //    debugImage.mipmaps = 1;
+    //    debugImage.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE;
+    //    
+    //    int pixelCount = loadedImage.width * loadedImage.height;
+    //    debugImage.data = (unsigned char*)malloc(pixelCount);
+    //    
+    //    float* sourceData = (float*)loadedImage.data;
+    //    unsigned char* destData = (unsigned char*)debugImage.data;
+    //    
+    //    for (int i = 0; i < pixelCount; i++)
+    //    {
+    //        // Get R channel from RGBA float data and convert to 0-255 range
+    //        float value = sourceData[i * 4]; // R channel
+    //        
+    //        // Clamp and convert to byte
+    //        if (value < 0.0f) value = 0.0f;
+    //        if (value > 1.0f) value = 1.0f;
+    //        
+    //        destData[i] = (unsigned char)(value * 255.0f);
+    //    }
+    //    
+    //    TRACELOG(LOG_INFO, "Debug: Converted to grayscale %dx%d", debugImage.width, debugImage.height);
+    //}
+    //else
+    //{
+    //    // For other formats, just copy the image
+    //    debugImage = ImageCopy(loadedImage);
+    //}
+    
+    // Export as PNG
+    bool success = ExportImage(loadedImage, outputFileName);
+    
+    if (success)
+    {
+        TRACELOG(LOG_INFO, "Debug: Successfully saved image to %s", outputFileName);
+    }
+    else
+    {
+        TRACELOG(LOG_ERROR, "Debug: Failed to save image to %s", outputFileName);
+    }
+    
+    UnloadImage(debugImage);
+    UnloadImage(loadedImage);
+}
+
 std::vector<Shader> const& DQ::ResourceManager::GetShaders()
 {
 	return m_Shaders;
