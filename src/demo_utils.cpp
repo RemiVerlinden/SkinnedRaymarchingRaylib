@@ -140,8 +140,6 @@ Model DQ::LoadModel(const char* fileName)
     for (unsigned int meshIndex = 0; meshIndex < model.meshCount; meshIndex++)
     {
         model.meshes[meshIndex].boneMotors = new kln::motor[model.meshes[meshIndex].boneCount];
-
-        meshIndex++; // Move to next mesh
     }
 	return model;
 }
