@@ -324,10 +324,13 @@ Image LoadImage(const char* fileName)
 					FreeEXRHeader(&exr_header);
 					return image;
 				}
+
+				 // Read HALF channel as FLOAT.
 				for (int i = 0; i < exr_header.num_channels; i++)
 				{
 					if (exr_header.pixel_types[i] == TINYEXR_PIXELTYPE_HALF)
 					{
+						exr_header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_HALF;
 						TRACELOG(LOG_INFO, "IMAGE: EXR pixel format is HALF FLOAT -> GOOD!");
 					}
 				}
@@ -340,7 +343,14 @@ Image LoadImage(const char* fileName)
 
 			// tinyexr call
 			{
-				int ret = LoadEXR(&hdrData, &exrWidth, &exrHeight, fileName, &errMsg);
+				EXRImage exr_image;
+				InitEXRImage(&exr_image);
+
+				// Here data is stored whatever requested_pixel_types is, it stores data as chunks of same color in 4 channels instead of RGBA per chunk
+				int ret = LoadEXRImageFromFile(&exr_image, &exr_header, fileName, &errMsg);
+
+				// this returns buffer with data stored as RGBA32 where each coninuous 16 byte chunk is 4 byte R, then G, then B, then A
+				//int ret = LoadEXR(&hdrData, &exrWidth, &exrHeight, fileName, &errMsg);
 				if (ret != TINYEXR_SUCCESS)
 				{
 					TRACELOG(LOG_WARNING, "IMAGE: Failed to load EXR file: %s", errMsg);
@@ -348,19 +358,32 @@ Image LoadImage(const char* fileName)
 				}
 				else
 				{
-					image.data = hdrData;
-					image.width = exrWidth;
-					image.height = exrHeight;
+					image.width = exr_image.width;
+					image.height = exr_image.height;
 					image.mipmaps = 1;
-					// raylib has full-float support via R32G32B32A32:
-					image.format = PIXELFORMAT_UNCOMPRESSED_R16;
-					TRACELOG(LOG_INFO, "IMAGE: EXR data loaded (%ix%i | HALF-FLOAT)", exrWidth, exrHeight);
+
+					int colorChannelByteSize = image.width * image.height * sizeof(unsigned short);
+					image.data = RL_MALLOC(colorChannelByteSize); // HARDCODE I JUST NEED IT TO WORK | I KNOW DATA IS HALF FLOAT = UNSIGNED SHORT
+
+					// for some amazing reason exr_image.images[channels] stores the RGBA channels backwards meaning that the A channel is in [0] and the R channel is [3]
+					for (int i = 0; i < exr_header.num_channels; i++)
+					{
+						if (exr_header.channels[i].name[0] == 'R') // hardcode R for red channel, only reason I know is because manual debugging tinyexr.h line 6355
+							memcpy(image.data, exr_image.images[i], colorChannelByteSize); // Copy required data to image
+						else TRACELOG(LOG_WARNING, "IMAGE: Could not find RED channel in EXR file");
+					}
+					
+
+					// TinyEXR LoadEXR returns 32-bit float RGBA data
+					image.format = RL_PIXELFORMAT_UNCOMPRESSED_R16;
+					TRACELOG(LOG_INFO, "IMAGE: EXR data loaded (%ix%i | 32-BIT FLOAT)", image.width, image.height);
 				}
+				FreeEXRImage(&exr_image);
+				FreeEXRHeader(&exr_header);
 			}
 			if (image.data != NULL) TRACELOG(LOG_INFO, "IMAGE: Data loaded successfully (%ix%i | %s | %i mipmaps)", image.width, image.height, rlGetPixelFormatName(image.format), image.mipmaps);
 			else TRACELOG(LOG_WARNING, "IMAGE: Failed to load image data");
 
-			FreeEXRHeader(&exr_header);
 			return image;
 		}
 	}
@@ -4240,9 +4263,15 @@ Texture2D Load3DTextureSDFFromImage(Image image)
 	{
 		// Calculate 3D dimensions from 2D slice layout
 		// Formula: b^3 = a^2, so b = a^(2/3) where a is the 2D image dimension
-		int cubeSize = (int)powf((float)image.width, 2.0f / 3.0f);
+		//int cubeSize = (int)powf((float)image.width, 2.0f / 3.0f);
+		// 
+		// Compute volume resolution (res) = (2/3 power of image.width):
+		//   if width=4913, (4913)^(2/3) = 289 exactly.
+		float  f = powf((float)image.width, 2.0f / 3.0f);
+		int    cubeSize = (int)(f + 0.5f);  // = 289
 
-		texture.id = rlLoad3DTextureSDF(image.data, cubeSize, cubeSize, cubeSize, image.format, image.mipmaps);
+
+		texture.id = rlLoad3DTextureSDF(image.data, cubeSize, image.format, image.mipmaps);
 	}
 	else TRACELOG(LOG_WARNING, "IMAGE: Data is not valid to load 3D texture");
 
