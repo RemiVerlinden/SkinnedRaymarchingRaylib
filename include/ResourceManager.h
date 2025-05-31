@@ -41,7 +41,7 @@ namespace DQ {
     private:
 
         CombinedModelData m_ModelData;
-        std::vector<Shader> m_Shaders;
+        std::vector<Shader> m_Shaders; // cant figure out why, but the fact that this is a vector is causing memory leaks???? if I use a static array, I get no problems.
         Texture m_TextureBindPoseSDF; // 3D texture stored as raylib Texture struct - need rework
     };
 }
