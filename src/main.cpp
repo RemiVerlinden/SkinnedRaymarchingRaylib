@@ -64,7 +64,7 @@ int main(void)
 		{
 			static DQ::UpdateContext context;
 			static bool pause;
-			if (IsKeyPressed(KEY_P)) pause = !pause;
+			if (IsKeyPressed(KEY_C)) pause = !pause;
 			if (!pause)
 			{
 				context.frame++;

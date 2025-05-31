@@ -37,9 +37,10 @@ void DQ::DemoScene::Init()
 
 void DQ::DemoScene::Update(UpdateContext const& context)
 {
-	if (IsKeyPressed(KEY_F))			++m_ActiveShader %= ShaderTypes::TOTALTYPES;
+	if (IsKeyPressed(KEY_F))			m_ActiveShader = (m_ActiveShader == ShaderTypes::LINEARBLENDSKINNING) ? ShaderTypes::DUALQUATERNIONBLENDSKINNING : ShaderTypes::LINEARBLENDSKINNING;
+	if (IsKeyPressed(KEY_G))			m_ActiveShader = ShaderTypes::RAYMARCHING;
 	if (IsKeyPressed(KEY_T))			m_ActiveAnimation++;
-	if (IsKeyPressed(KEY_G))			m_ActiveAnimation--;
+	if (IsKeyPressed(KEY_R))			m_ActiveAnimation--;
 
 	// Toggle camera controls
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
@@ -147,21 +148,25 @@ namespace DQ
 
 		EndMode3D();
 
-		DrawText("T/G to switch animation", 10, 10, 20, GRAY);
+		DrawText("R/T to switch animation", 10, 10, 20, GRAY);
 		DrawText("F to toggle skinning mode", 10, 32, 20, GRAY);
-		DrawText("P to pause", 10, 54, 20, GRAY);
-		DrawText("RIGHT CLICK to toggle camera controls", 10, 76, 20, GRAY);
+		DrawText("G to enable static raymarch shader", 10, 54, 20, GRAY);
+		DrawText("C to pause", 10, 76, 20, GRAY);
+		DrawText("RIGHT CLICK to toggle camera controls", 10, 98, 20, GRAY);
 
+		float activeShaderTextHeight = GetScreenHeight() - 30;
 		switch (activeShader)
 		{
 			case ShaderTypes::LINEARBLENDSKINNING:
-				DrawText("LINEAR BLEND SKINNING", 10, 110, 20, GREEN);
+				DrawText("LINEAR BLEND SKINNING", 10, activeShaderTextHeight, 30, GREEN);
 				break;
 			case ShaderTypes::DUALQUATERNIONBLENDSKINNING:
-				DrawText("DUAL QUAT BLEND SKINNING", 10, 110, 20, SKYBLUE);
+				DrawText("DUAL QUAT BLEND SKINNING", 10, activeShaderTextHeight, 30, SKYBLUE);
 				break;
 			case ShaderTypes::RAYMARCHING:
-				DrawText("STATIC RAYMARCH", 10, 110, 20, ORANGE);
+
+				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 25, 20, GOLD);
+				DrawText("STATIC RAYMARCH", 10, activeShaderTextHeight, 30, ORANGE);
 				break;
 		}
 
