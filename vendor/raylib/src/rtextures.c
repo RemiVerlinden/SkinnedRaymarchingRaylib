@@ -325,13 +325,14 @@ Image LoadImage(const char* fileName)
 					return image;
 				}
 
-				 // Read HALF channel as FLOAT.
+				// Read HALF channel as FLOAT.
 				for (int i = 0; i < exr_header.num_channels; i++)
 				{
 					if (exr_header.pixel_types[i] == TINYEXR_PIXELTYPE_HALF)
 					{
 						exr_header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_HALF;
 						TRACELOG(LOG_INFO, "IMAGE: EXR pixel format is HALF FLOAT -> GOOD!");
+						break;
 					}
 				}
 
@@ -366,13 +367,19 @@ Image LoadImage(const char* fileName)
 					image.data = RL_MALLOC(colorChannelByteSize); // HARDCODE I JUST NEED IT TO WORK | I KNOW DATA IS HALF FLOAT = UNSIGNED SHORT
 
 					// for some amazing reason exr_image.images[channels] stores the RGBA channels backwards meaning that the A channel is in [0] and the R channel is [3]
-					for (int i = 0; i < exr_header.num_channels; i++)
 					{
-						if (exr_header.channels[i].name[0] == 'R') // hardcode R for red channel, only reason I know is because manual debugging tinyexr.h line 6355
+
+						bool foundChannel = false;
+						for (int i = 0; i < exr_header.num_channels; i++)
+						{
+							if (exr_header.channels[i].name[0] != 'R') continue;// hardcode R for red channel, only reason I know is because manual debugging tinyexr.h line 6355
 							memcpy(image.data, exr_image.images[i], colorChannelByteSize); // Copy required data to image
-						else TRACELOG(LOG_WARNING, "IMAGE: Could not find RED channel in EXR file");
+							foundChannel = true;
+						}
+						if(!foundChannel)
+							TRACELOG(LOG_WARNING, "IMAGE: Could not find RED channel in EXR file");
 					}
-					
+
 
 					// TinyEXR LoadEXR returns 32-bit float RGBA data
 					image.format = RL_PIXELFORMAT_UNCOMPRESSED_R16;
