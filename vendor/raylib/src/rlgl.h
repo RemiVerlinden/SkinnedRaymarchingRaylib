@@ -754,7 +754,7 @@ RLAPI void rlDrawVertexArrayElementsInstanced(int offset, int count, const void 
 
 // Textures management
 RLAPI unsigned int rlLoadTexture(const void* data, int width, int height, int format, int mipmapCount); // Load texture data
-RLAPI unsigned int rlLoad3DTextureSDF(const void* data, int width, int height, int depth, int format, int mipmapCount); // DEMO CUSTOM EXTENSION
+RLAPI unsigned int rlLoad3DTextureSDF(const void* data, int res, int format, int mipmapCount); // DEMO CUSTOM EXTENSION
 RLAPI unsigned int rlLoadTextureDepth(int width, int height, bool useRenderBuffer); // Load depth texture/renderbuffer (to be attached to fbo)
 RLAPI unsigned int rlLoadTextureCubemap(const void *data, int size, int format, int mipmapCount); // Load texture cubemap data
 RLAPI void rlUpdateTexture(unsigned int id, int offsetX, int offsetY, int width, int height, int format, const void *data); // Update texture with new data on GPU
@@ -3345,13 +3345,74 @@ unsigned int rlLoadTexture(const void *data, int width, int height, int format, 
     return id;
 }
 
-unsigned int rlLoad3DTextureSDF(const void* data, int width, int height, int depth, int format, int mipmapCount)
+//-----------------------------------------------------------------------------
+// rlLoad3DTextureSDF (reworked):
+//     - 'res' is the X=Y=Z dimension of the 3D volume (must be a perfect square).
+//     - The function expects that 'data' points to a 2D image of size
+//           (res * sqrt(res)) × (res * sqrt(res))
+//       which contains exactly 'res' slices, laid out in a vres × vres grid,
+//       each slice itself being 'res × res' pixels.
+//
+//     In other words, if your volume is res³, the texture atlas must be
+//     a (tilesPerRow × tilesPerRow) grid of (res × res) tiles, where
+//         tilesPerRow = vres.
+//
+//     For example: res = 289 => tilesPerRow = 17, atlas = 4913×4913 (17×289 each).
+//     Likewise, res = 256 => tilesPerRow = 16, atlas = 4096×4096 (16×256 each).
+//
+//     Caller only passes:
+//         - const void* data         : pointer to the full 2D atlas’ pixels.
+//         - int        res           : desired 3D volume side length.
+//         - int        format        : pixel format enum (e.g. PIXELFORMAT_R8G8B8A8).
+//         - int        mipmapCount   : number of mip levels baked into 'data'.
+//     The code will:
+//       1) Check that res is a perfect square (so vres is integral).
+//       2) Compute tilesPerRow = vres.
+//       3) Compute compositeWidth  = res * tilesPerRow.
+//          (compositeHeight is the same, since we assume square atlas).
+//       4) Allocate a staging buffer of size (res³ × bytesPerPixel), then
+//          copy each “res×res tile” from the atlas into its proper Z-slice slot.
+//       5) Call glTexImage3D(…) for level 0, then either generate mips or
+//          upload all mip levels if they are already provided in ‘data’.
+//
+//     NOTE: The caller must ensure that the 2D atlas was created exactly as:
+//         atlasWidth  = res * tilesPerRow
+//         atlasHeight = res * tilesPerRow
+//     with tilesPerRow = vres.  If those conditions fail, the function will
+//     print an error and return 0.
+//
+// Returns the GLuint texture ID (or 0 if something went wrong).
+//-----------------------------------------------------------------------------
+
+unsigned int rlLoad3DTextureSDF(const void* data, int res, int format, int mipmapCount)
 {
     unsigned int id = 0;
 
-    glBindTexture(GL_TEXTURE_3D, 0);    // Free any old binding
+    // 1) Verify that 'res' is a perfect square in order to lay out res slices
+    //    in a (vres × vres) grid.
+    float  f = sqrtf((float)res);
+    int    tilesPer = (int)(f + 0.5f);
+    if (tilesPer * tilesPer != res)
+    {
+        TRACELOG(RL_LOG_ERROR,
+            "rlLoad3DTextureSDF: res (%d) is not a perfect square ? cannot tile into vres × vres",
+            res);
+        return 0;
+    }
 
-    // Check texture format support by OpenGL 1.1 (compressed textures not supported)
+    // 2) Compute composite atlas dimensions.  Each slice is res×res pixels.
+    //    We have tilesPer tiles per row, so:
+    //      atlasWidth  = res * tilesPer,
+    //      atlasHeight = res * tilesPer.
+    int compositeWidth = res * tilesPer;
+    int compositeHeight = res * tilesPer;
+
+    // We bind 0 first (just in case),
+    // then create a new 3D texture ID:
+    glBindTexture(GL_TEXTURE_3D, 0);
+
+
+    // (Optional) Verify format support.  We keep your original checks here:
 #if defined(GRAPHICS_API_OPENGL_11)
     if (format >= RL_PIXELFORMAT_COMPRESSED_DXT1_RGB)
     {
@@ -3392,82 +3453,124 @@ unsigned int rlLoad3DTextureSDF(const void* data, int width, int height, int dep
 #endif
 #endif  // GRAPHICS_API_OPENGL_11
 
+    // 3) We’ll need to unpack rows of 1-byte alignment:
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     glGenTextures(1, &id);              // Generate texture id
 
     glBindTexture(GL_TEXTURE_3D, id);   // Bind 3D texture instead of 2D
 
-    // Reorganize 2D slice data into 3D texture layout
-    int slicesPerRow = (int)sqrtf((float)(depth));
-    int sliceSize = width / slicesPerRow;
+    // 4) Determine bytes per pixel from the provided format:
+    int bytesPerPixel = 0;
+    switch (format)
+    {
+        case PIXELFORMAT_UNCOMPRESSED_R32G32B32A32: bytesPerPixel = 16; break; // 4×4-byte floats
+        case PIXELFORMAT_UNCOMPRESSED_R32G32B32:    bytesPerPixel = 12; break; // 3×4-byte floats
+        case PIXELFORMAT_UNCOMPRESSED_R16G16B16A16: bytesPerPixel = 8; break; // 4×2-byte half-floats
+        case PIXELFORMAT_UNCOMPRESSED_R16:          bytesPerPixel = 2; break; // 1×2-byte half-float
+        case PIXELFORMAT_UNCOMPRESSED_R8G8B8A8:     bytesPerPixel = 4; break; // 4×1-byte U8
+        default:
+            TRACELOG(RL_LOG_ERROR,
+                "rlLoad3DTextureSDF: unsupported or unaccounted format %d", format);
+            return 0;
+    }
 
-    unsigned char* volumeData = NULL;
+    // 5) Now we allocate a staging buffer big enough for *all* res³ voxels:
+    //       totalVoxelCount = res * res * res
+    //       totalBytes      = res³ * bytesPerPixel
+    size_t totalVoxels = (size_t)res * res * res;
+    size_t volumeSize = totalVoxels * (size_t)bytesPerPixel;
+    unsigned char* volumeData = (unsigned char*)RL_MALLOC(volumeSize);
+    if (!volumeData)
+    {
+        TRACELOG(RL_LOG_ERROR,
+            "rlLoad3DTextureSDF: failed to allocate %zu bytes for volumeData", volumeSize);
+        return 0;
+    }
+
+    // 6) Reorder from the 2D atlas into the 3D linear array:
+    //    - atlas is compositeWidth × compositeHeight
+    //    - there are exactly 'res' slices, laid out row-wise in tiles of size res×res
+    //    - tile grid dims = tilesPer × tilesPer = vres × vres
+    //    - so for slice = 0..(res-1), we find (tileRow, tileCol) = (slice/tilesPer, slice%tilesPer),
+    //      and copy each (x=0..res-1, y=0..res-1) from atlas[(tileCol*res + x, tileRow*res + y)]
+    //      into volumeData at index ((slice * res * res) + (y * res) + x).
     if (data != NULL)
     {
-        int bytesPerPixel = 0;
-        if (format == PIXELFORMAT_UNCOMPRESSED_R16G16B16A16) bytesPerPixel = 8; // Half-float RGBA
-        else if (format == PIXELFORMAT_UNCOMPRESSED_R16) bytesPerPixel = 2; // Half-float R single channel
-        else if (format == PIXELFORMAT_UNCOMPRESSED_R32G32B32A32) bytesPerPixel = 16; // Float RGBA
-        else if (format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8) bytesPerPixel = 4; // Byte RGBA
-        else bytesPerPixel = 4; // Default fallback
+        const unsigned char* srcData = (const unsigned char*)data;
 
-        volumeData = (unsigned char*)RL_MALLOC(sliceSize * sliceSize * depth * bytesPerPixel);
-        unsigned char* srcData = (unsigned char*)data;
-
-        for (int slice = 0; slice < depth; slice++)
+        for (int slice = 0; slice < res; slice++)
         {
-            int sliceRow = slice / slicesPerRow;
-            int sliceCol = slice % slicesPerRow;
+            // Which row/column in the vres×vres grid?
+            int tileRow = slice / tilesPer;
+            int tileCol = slice % tilesPer;
 
-            for (int y = 0; y < sliceSize; y++)
+            // For every pixel in a res×res tile:
+            for (int y = 0; y < res; y++)
             {
-                for (int x = 0; x < sliceSize; x++)
+                for (int x = 0; x < res; x++)
                 {
-                    // Source pixel location in the big 2D image
-                    int srcX = sliceCol * sliceSize + x;
-                    int srcY = sliceRow * sliceSize + y;
-                    int srcIndex = (srcY * width + srcX) * bytesPerPixel;
+                    // 2D atlas coordinates of that pixel:
+                    int srcX = tileCol * res + x;
+                    int srcY = tileRow * res + y;
 
-                    // Destination pixel location in volume
-                    int dstIndex = (slice * sliceSize * sliceSize + y * sliceSize + x) * bytesPerPixel;
+                    // Linear index into the atlas:
+                    size_t srcIndex = ((size_t)srcY * compositeWidth + srcX) * bytesPerPixel;
 
-                    // Copy pixel data
-                    for (int b = 0; b < bytesPerPixel; b++)
-                    {
-                        volumeData[dstIndex + b] = srcData[srcIndex + b];
-                    }
+                    // Compute linear index in the 3D volume (Z-major order: x fastest, y next, z outermost):
+                    //
+                    //   voxelIndex = slice * (res*res) + y * res + x
+                    //
+                    int dstY = res - 1 - y;
+                    size_t dstIndex = ((size_t)slice * res * res + (size_t)dstY * res + (size_t)x) * bytesPerPixel;
+
+                    // Copy 'bytesPerPixel' bytes from atlas ? volume
+                    memcpy(volumeData + dstIndex, srcData + srcIndex, bytesPerPixel);
                 }
             }
         }
     }
+    else
+    {
+        // If data==NULL, we do nothing (volumeData will remain uninitialized—but
+        // the OpenGL calls below will simply upload zero or garbage). You might
+        // decide to memset(volumeData, 0, volumeSize) instead of skipping.
+    }
 
-    int mipWidth = sliceSize;
-    int mipHeight = sliceSize;
-    int mipDepth = depth;
-    int mipOffset = 0;          // Mipmap data offset, only used for tracelog
+    // 7) Now upload to a GL_TEXTURE_3D.  We will assume level-0 is in volumeData.
+    int mipWidth = res;
+    int mipHeight = res;
+    int mipDepth = res;
+    int mipOffset = 0;        // for logging
 
     unsigned char* dataPtr = volumeData;
 
-    // Load the different mipmap levels
-    for (int i = 0; i < mipmapCount; i++)
+    for (int level = 0; level < mipmapCount; level++)
     {
-        unsigned int mipSize = rlGetPixelDataSize(mipWidth, mipHeight, format) * mipDepth; // 3D version
+        // Compute how many bytes this mip-level is:
+        //   width×height×depth×bytesPerPixel (for the 3D block)
+        unsigned int singleMipSize = rlGetPixelDataSize(mipWidth, mipHeight, format) * mipDepth;
 
-        unsigned int glInternalFormat, glFormat, glType;
-        rlGetGlTextureFormats(format, &glInternalFormat, &glFormat, &glType);
+        unsigned int glInternal, glFormat, glType;
+        rlGetGlTextureFormats(format, &glInternal, &glFormat, &glType);
 
-        TRACELOGD("TEXTURE: Load 3D mipmap level %i (%i x %i x %i), size: %i, offset: %i", i, mipWidth, mipHeight, mipDepth, mipSize, mipOffset);
+        TRACELOG(RL_LOG_INFO,
+            "TEXTURE: 3D ? OpenGL formats: Internal=0x%X, Format=0x%X, Type=0x%X",
+            glInternal, glFormat, glType);
+        TRACELOGD("TEXTURE: Load 3D mip level %d (%dx%dx%d), size=%u, offset=%d",
+            level, mipWidth, mipHeight, mipDepth, singleMipSize, mipOffset);
 
-        if (glInternalFormat != 0)
+        if (glInternal != 0)
         {
             if (format < RL_PIXELFORMAT_COMPRESSED_DXT1_RGB)
-                glTexImage3D(GL_TEXTURE_3D, i, glInternalFormat, mipWidth, mipHeight, mipDepth, 0, glFormat, glType, dataPtr);
+                glTexImage3D(GL_TEXTURE_3D, level, (GLint)glInternal, mipWidth, mipHeight, mipDepth, 0, glFormat, glType, dataPtr);
+
 #if !defined(GRAPHICS_API_OPENGL_11)
-            else glCompressedTexImage3D(GL_TEXTURE_3D, i, glInternalFormat, mipWidth, mipHeight, mipDepth, 0, mipSize, dataPtr);
+            else glCompressedTexImage3D(GL_TEXTURE_3D, level, glInternal, mipWidth, mipHeight, mipDepth, 0, singleMipSize, dataPtr);
 #endif
 
 #if defined(GRAPHICS_API_OPENGL_33)
+            // If grayscale or gray+alpha, set up swizzling on 3D texture
             if (format == RL_PIXELFORMAT_UNCOMPRESSED_GRAYSCALE)
             {
                 GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
@@ -3484,23 +3587,25 @@ unsigned int rlLoad3DTextureSDF(const void* data, int width, int height, int dep
             }
 #endif
         }
+        else
+        {
+            TRACELOG(RL_LOG_ERROR,
+                "TEXTURE: Failed to get 3D OpenGL format for pixelFormat=%d (texFloat32=%d)",
+                format, RLGL.ExtSupported.texFloat32);
+        }
 
-        mipWidth /= 2;
-        mipHeight /= 2;
-        mipDepth /= 2;
-        mipOffset += mipSize;       // Increment offset position to next mipmap
-        if (dataPtr != NULL) dataPtr += mipSize;         // Increment data pointer to next mipmap
+        // Advance to next mip:
+        mipOffset += singleMipSize;
+        if (dataPtr != NULL) dataPtr += singleMipSize;
 
-        // Security check for NPOT textures
-        if (mipWidth < 1) mipWidth = 1;
-        if (mipHeight < 1) mipHeight = 1;
-        if (mipDepth < 1) mipDepth = 1;
+        mipWidth = (mipWidth > 1 ? mipWidth / 2 : 1);
+        mipHeight = (mipHeight > 1 ? mipHeight / 2 : 1);
+        mipDepth = (mipDepth > 1 ? mipDepth / 2 : 1);
     }
 
-    // Texture parameters configuration
-    // NOTE: glTexParameteri does NOT affect texture uploading, just the way it's used
+    // 8) Configure wrap & filtering on the 3D texture:
 #if defined(GRAPHICS_API_OPENGL_ES2)
-    // NOTE: OpenGL ES 2.0 with no GL_OES_texture_npot support (i.e. WebGL) has limited NPOT support, so CLAMP_TO_EDGE must be used
+    // On GLES2 without NPOT support, clamp-to-edge is safest:
     if (RLGL.ExtSupported.texNPOT)
     {
         glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);       // Set texture to repeat on x-axis
@@ -3515,35 +3620,29 @@ unsigned int rlLoad3DTextureSDF(const void* data, int width, int height, int dep
         glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);       // Set texture to clamp on z-axis
     }
 #else
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);       // Use clamp to edge for SDF
+    // For an SDF, clamp-to-edge in all dimensions is usually desired:
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 #endif
 
-    // Magnification and minification filters
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  // Use linear for SDF
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-#if defined(GRAPHICS_API_OPENGL_33)
+    // Set min/mag filters:
     if (mipmapCount > 1)
     {
-        // Activate Trilinear filtering if mipmaps are available
-        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, mipmapCount); // Required for user-defined mip count
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
-#endif
-
-    // At this point we have the texture loaded in GPU and texture parameters configured
-
-    // NOTE: If mipmaps were not in data, they are not generated automatically
+    else
+    {
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
 
     // Unbind current texture
     glBindTexture(GL_TEXTURE_3D, 0);
-
     if (volumeData) RL_FREE(volumeData);
 
-    if (id > 0) TRACELOG(RL_LOG_INFO, "TEXTURE: [ID %i] 3D Texture loaded successfully (%ix%ix%i | %s | %i mipmaps)", id, sliceSize, sliceSize, depth, rlGetPixelFormatName(format), mipmapCount);
+    if (id > 0) TRACELOG(RL_LOG_INFO, "TEXTURE: [ID %u] 3D texture loaded successfully (%d×%d×%d, %s, %i mips)", id, res, res, res, rlGetPixelFormatName(format), mipmapCount);
     else TRACELOG(RL_LOG_WARNING, "TEXTURE: Failed to load 3D texture");
 
     return id;
