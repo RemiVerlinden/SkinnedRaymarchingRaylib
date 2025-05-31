@@ -31,6 +31,7 @@ namespace DQ {
         void LoadAllShaders();
         void LoadModel(const char* fileName);
         void LoadTextureSDF(const char* fileName);
+        void DebugSaveImageData(const char* fileName, const char* outputFileName);
 
         std::vector<Shader> const& GetShaders();
         CombinedModelData& GetModelData();
