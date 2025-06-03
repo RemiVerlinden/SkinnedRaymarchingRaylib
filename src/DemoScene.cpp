@@ -12,7 +12,7 @@ Transform clippingVolumeGizmoTransform = GizmoIdentity();
 namespace DQ
 {
 	void BeginDrawing(Camera& camera);
-	void EndDrawing(ShaderTypes activeShader);
+	void EndDrawing(ShaderTypes activeShader, int activeAnimId, int animsCount);
 	void DrawEllipsoidWires(Transform transform, int rings, int slices, Color color);
 
 }
@@ -103,8 +103,10 @@ void DQ::DemoScene::Draw()
 {
 	DQ::BeginDrawing(m_Camera);
 
+	CombinedModelData const& modelData = m_ResourceManager.GetModelData();
+
 	{
-		Model const& model = m_ResourceManager.GetModelData().model;
+		Model const& model = modelData.model;
 
 		DQ::DrawMesh(model.meshes[0], model.materials[1], model.transform);
 	}
@@ -119,7 +121,7 @@ void DQ::DemoScene::Draw()
 		}
 	}
 
-	DQ::EndDrawing(static_cast<ShaderTypes>(m_ActiveShader));
+	DQ::EndDrawing(static_cast<ShaderTypes>(m_ActiveShader), m_ActiveAnimation+1, modelData.animcount);
 
 }
 
@@ -143,13 +145,13 @@ namespace DQ
 		BeginMode3D(camera);
 	}
 
-	void EndDrawing(ShaderTypes activeShader)
+	void EndDrawing(ShaderTypes activeShader, int activeAnimId, int animsCount)
 	{
 		DrawGrid(10, 1.0f);
 
 		EndMode3D();
 
-		DrawText("R/T to switch animation", 10, 10, 20, GRAY);
+		DrawText(TextFormat("R/T to switch animation: %d/%d", activeAnimId, animsCount), 10, 10, 20, GRAY);
 		DrawText("F to toggle skinning mode", 10, 32, 20, GRAY);
 		DrawText("G to enable static raymarch shader", 10, 54, 20, GRAY);
 		DrawText("C to pause", 10, 76, 20, GRAY);
