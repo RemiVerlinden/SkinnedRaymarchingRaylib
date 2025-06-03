@@ -39,8 +39,8 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 {
 	if (IsKeyPressed(KEY_F))			m_ActiveShader = (m_ActiveShader == ShaderTypes::LINEARBLENDSKINNING) ? ShaderTypes::DUALQUATERNIONBLENDSKINNING : ShaderTypes::LINEARBLENDSKINNING;
 	if (IsKeyPressed(KEY_G))			m_ActiveShader = ShaderTypes::RAYMARCHING;
-	if (IsKeyPressed(KEY_T))			m_ActiveAnimation++;
-	if (IsKeyPressed(KEY_R))			m_ActiveAnimation--;
+	if (IsKeyPressed(KEY_T))			m_ActiveAnimation = std::min(++m_ActiveAnimation, m_ResourceManager.GetModelData().animcount - 1);
+	if (IsKeyPressed(KEY_R))			m_ActiveAnimation = std::max(--m_ActiveAnimation, 0); 
 
 	// Toggle camera controls
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
@@ -57,7 +57,8 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	CombinedModelData const& modeldata	= m_ResourceManager.GetModelData();
 	//------------------------------------------------------------
 	// UPDATE MODEL ANIMATION
-	ModelAnimation& anim				= modeldata.pAnimations[m_ActiveAnimation % modeldata.animcount];
+
+	ModelAnimation& anim				= modeldata.pAnimations[m_ActiveAnimation];
 	int	frame							= context.frame % anim.frameCount;
 	DQ::UpdateModelAnimationBones(modeldata.model, anim, frame);
 	//------------------------------------------------------------
