@@ -38,7 +38,7 @@ void DQ::DemoScene::Init()
 void DQ::DemoScene::Update(UpdateContext const& context)
 {
 	if (IsKeyPressed(KEY_F))			m_ActiveShader = (m_ActiveShader == ShaderTypes::LINEARBLENDSKINNING) ? ShaderTypes::DUALQUATERNIONBLENDSKINNING : ShaderTypes::LINEARBLENDSKINNING;
-	if (IsKeyPressed(KEY_G))			m_ActiveShader = ShaderTypes::RAYMARCHING;
+	if (IsKeyPressed(KEY_G))			m_ActiveShader = (m_ActiveShader == ShaderTypes::STATICRAYMARCHING) ? ShaderTypes::SKINNEDRAYMARCHING : ShaderTypes::STATICRAYMARCHING;
 	if (IsKeyPressed(KEY_T))			m_ActiveAnimation = std::min(++m_ActiveAnimation, m_ResourceManager.GetModelData().animcount - 1);
 	if (IsKeyPressed(KEY_R))			m_ActiveAnimation = std::max(--m_ActiveAnimation, 0); 
 
@@ -70,7 +70,7 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 		int loc							= GetShaderLocation(shader, "boneDualQuaternions"); // this should not be done every frame, only once and cache
 		SetShaderValueV(shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
 	}
-	else if (m_ActiveShader == ShaderTypes::RAYMARCHING)
+	else if (m_ActiveShader == ShaderTypes::STATICRAYMARCHING)
 	{
 		int loc = GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
 		SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
@@ -81,6 +81,34 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 		loc		= GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
 		SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
 		
+		// SDF bounds for 50U pirate mesh (from box_bounds.txt)
+		Vector3 minBounds{ -0.7175f, -0.0325f, -0.7275f };
+		Vector3 maxBounds{ 0.7225f, 1.4075f, 0.7125f };
+		// Set SDF bounds uniforms
+		loc = GetShaderLocation(shader, "minBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &minBounds, SHADER_UNIFORM_VEC3, 1);
+		loc = GetShaderLocation(shader, "maxBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &maxBounds, SHADER_UNIFORM_VEC3, 1);
+
+		float time = GetTime();
+		loc = GetShaderLocation(shader, "time"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &time, SHADER_UNIFORM_FLOAT, 1);
+
+	}
+	else if(m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHING)
+	{
+		int loc = GetShaderLocation(shader, "boneDualQuaternions"); // this should not be done every frame, only once and cache
+		SetShaderValueV(shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
+
+		loc = GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
+		SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
+
+		loc = GetShaderLocation(shader, "clippingVolumeScale"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.scale, SHADER_UNIFORM_VEC3, 1);
+
+		loc = GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
+		SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
+
 		// SDF bounds for 50U pirate mesh (from box_bounds.txt)
 		Vector3 minBounds{ -0.7175f, -0.0325f, -0.7275f };
 		Vector3 maxBounds{ 0.7225f, 1.4075f, 0.7125f };
@@ -111,7 +139,7 @@ void DQ::DemoScene::Draw()
 		DQ::DrawMesh(model.meshes[0], model.materials[1], model.transform);
 	}
 	{
-		if (m_ActiveShader == ShaderTypes::RAYMARCHING)
+		if (m_ActiveShader == ShaderTypes::STATICRAYMARCHING)
 		{
 			if (!IsCursorHidden())
 			{
@@ -166,7 +194,7 @@ namespace DQ
 			case ShaderTypes::DUALQUATERNIONBLENDSKINNING:
 				DrawText("DUAL QUAT BLEND SKINNING", 10, activeShaderTextHeight, 30, SKYBLUE);
 				break;
-			case ShaderTypes::RAYMARCHING:
+			case ShaderTypes::STATICRAYMARCHING:
 
 				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 25, 20, GOLD);
 				DrawText("STATIC RAYMARCH", 10, activeShaderTextHeight, 30, ORANGE);

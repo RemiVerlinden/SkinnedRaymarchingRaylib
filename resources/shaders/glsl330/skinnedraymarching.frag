@@ -271,6 +271,7 @@ kln_point kln_apply(in kln_motor m)
 in vec2 fragTexCoord;
 in vec4 fragColor;
 in vec3 preSkinnedFragPosition;
+in vec3 fragWorldPosition;
 in vec4 fragBoneWeights;
 in vec4 fragBoneIds;
 
@@ -324,7 +325,7 @@ void main() {
 
     // Inside the wound: raymarch through ellipsoid and mesh SDF
     vec3 rayOrigin = preSkinnedFragPosition;
-    vec3 rayDir = normalize(preSkinnedFragPosition - cameraPosition);
+    vec3 rayDir = normalize(fragWorldPosition - cameraPosition);
 
     // Create interpolated motor from bone weights for inverse transformation
     int boneIndex0 = int(fragBoneIds.x);
@@ -338,8 +339,15 @@ void main() {
     ,kln_add(kln_mul(GetMotor(boneIndex2), fragBoneWeights.z)
     ,kln_mul(GetMotor(boneIndex3), fragBoneWeights.w))));
     
-    // Get the inverse motor to transform back to T-pose space
+    // Get the inverse motor and extract the rotational part (rotor) for direction transformation
     kln_motor inverseMotor = kln_inverse(interpolatedMotor);
+    kln_rotor inverseRotor;
+    inverseRotor.p1 = inverseMotor.p1; // Extract rotational part only
+    
+    // Transform ray direction to T-pose space using inverse rotor
+    kln_point rayDirPoint = kln_point(vec4(0.0, rayDir)); // Direction vector (w=0)
+    kln_point transformedRayDirPoint = kln_apply(inverseRotor, rayDirPoint);
+    vec3 transformedRayDir = transformedRayDirPoint.p3.yzw;
 
     bool hitEllipsoidBorder = false;
     const int maxSteps = 128;
@@ -348,7 +356,7 @@ void main() {
     float depth = 0.0;
 
     for (int i = 0; i < maxSteps; ++i) {
-        vec3 pos = rayOrigin + rayDir * depth;
+        vec3 pos = rayOrigin + transformedRayDir * depth;
         float ellipsoidDist = ellipsoidSDF(pos, clippingVolumePosition, clippingVolumeScale);
 
         const float EPSILON = 0.0001;
@@ -364,15 +372,10 @@ void main() {
     }
 
     if (hitEllipsoidBorder) {
-        vec3 hitPosition = rayOrigin + rayDir * depth;
+        vec3 hitPosition = rayOrigin + transformedRayDir * depth;
         
-        // Transform hit position back to T-pose space using inverse motor
-        kln_point worldPoint = kln_point(vec4(1.0, hitPosition));
-        kln_point tposePoint = kln_apply(inverseMotor, worldPoint);
-        vec3 tposePosition = tposePoint.p3.yzw;
-        
-        // Sample the SDF texture at the T-pose position
-        float sampledDepth = texture(bindPose3DTextureSDF, worldToSDFCoords(tposePosition)).r;
+        // Sample the SDF texture at the hit position (already in T-pose space)
+        float sampledDepth = texture(bindPose3DTextureSDF, worldToSDFCoords(hitPosition)).r;
 
         if(sampledDepth > 0.5025)
             discard;

@@ -276,6 +276,7 @@ out vec2 fragTexCoord;
 out vec4 fragColor;
 out vec3 fragNormal;
 out vec3 preSkinnedFragPosition;
+out vec3 fragWorldPosition;
 out vec4 fragBoneWeights;
 out vec4 fragBoneIds;
 
@@ -317,6 +318,7 @@ void main()
     
     // Store the original (pre-skinned) world position for raymarching
     preSkinnedFragPosition = vertexPosition;
+    fragWorldPosition = skinnedPosition.p3.yzw;
 
     gl_Position = mvp*vec4(skinnedPosition.p3.yzw, skinnedPosition.p3.x);
 }
