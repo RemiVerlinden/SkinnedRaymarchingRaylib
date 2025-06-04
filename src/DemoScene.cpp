@@ -38,7 +38,7 @@ void DQ::DemoScene::Init()
 void DQ::DemoScene::Update(UpdateContext const& context)
 {
 	if (IsKeyPressed(KEY_F))			m_ActiveShader = (m_ActiveShader == ShaderTypes::LINEARBLENDSKINNING) ? ShaderTypes::DUALQUATERNIONBLENDSKINNING : ShaderTypes::LINEARBLENDSKINNING;
-	if (IsKeyPressed(KEY_G))			m_ActiveShader = (m_ActiveShader == ShaderTypes::STATICRAYMARCHING) ? ShaderTypes::SKINNEDRAYMARCHING : ShaderTypes::STATICRAYMARCHING;
+	if (IsKeyPressed(KEY_G))			m_ActiveShader = (m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHING) ? ShaderTypes::STATICRAYMARCHING : ShaderTypes::SKINNEDRAYMARCHING;
 	if (IsKeyPressed(KEY_T))			m_ActiveAnimation = std::min(++m_ActiveAnimation, m_ResourceManager.GetModelData().animcount - 1);
 	if (IsKeyPressed(KEY_R))			m_ActiveAnimation = std::max(--m_ActiveAnimation, 0); 
 

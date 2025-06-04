@@ -398,7 +398,7 @@ void main() {
 
     bool hitEllipsoidBorder = false;
     const int maxSteps = 128;
-    const float minStep = 0.001;
+    const float minStep = 0.00001;
 
     float depth = 0.0;
     int steps = 0;
@@ -427,8 +427,34 @@ void main() {
 
         if(sampledDepth > 0.5025)
             discard;
-        // Ray hit ellipsoid border while still inside mesh - render wound surface
-        finalColor = vec4(steps/float(maxSteps), 0.1, 0.1, 1.0); // Red wound color
+        
+        // Raymarching step heatmap visualization
+        vec3 heatmapColor;
+        if (steps <= 5) {
+            // Blue: 1-5 steps (very efficient)
+            heatmapColor = vec3(0.0, 0.0, 1.0);
+        } else if (steps <= 10) {
+            // Blue to Cyan: 6-10 steps
+            float t = (steps - 5) / 5.0;
+            heatmapColor = mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), t);
+        } else if (steps <= 20) {
+            // Cyan to Green: 11-20 steps
+            float t = (steps - 10) / 10.0;
+            heatmapColor = mix(vec3(0.0, 1.0, 1.0), vec3(0.0, 1.0, 0.0), t);
+        } else if (steps <= 40) {
+            // Green to Yellow: 21-40 steps
+            float t = (steps - 20) / 20.0;
+            heatmapColor = mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), t);
+        } else if (steps <= 80) {
+            // Yellow to Red: 41-80 steps
+            float t = (steps - 40) / 40.0;
+            heatmapColor = mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), t);
+        } else {
+            // Pure Red: 81+ steps (inefficient)
+            heatmapColor = vec3(1.0, 0.0, 0.0);
+        }
+        
+        finalColor = vec4(heatmapColor, 1.0);
     } else {
         // Ray didn't hit anything definitive - fallback
         finalColor = vec4(1,0,1, 1.0); // pink error color
