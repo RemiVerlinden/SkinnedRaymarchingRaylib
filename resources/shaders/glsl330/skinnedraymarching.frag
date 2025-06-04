@@ -114,6 +114,49 @@ kln_motor kln_mul(in kln_motor a, in kln_motor b)
     return c;
 }
 
+// Normalizes motor such that m * ~m = 1
+kln_motor kln_normalize(in kln_motor m)
+{
+    kln_motor result;
+    
+    // Compute |b|^2 = dot(p1, p1)
+    float b2 = dot(m.p1, m.p1);
+    
+    // Compute 1/sqrt(|b|^2) = 1/|b|
+    float s = inversesqrt(b2);
+    
+    // Compute b0*c0 - b1*c1 - b2*c2 - b3*c3
+    float bc = m.p1.x * m.p2.x - dot(m.p1.yzw, m.p2.yzw);
+    
+    // t = bc / |b|^3 = bc / (|b|^2 * |b|) = bc * s / b2
+    float t = bc * s / b2;
+    
+    // Apply normalization
+    result.p1 = m.p1 * s;
+    result.p2 = m.p2 * s - m.p1 * t;
+    result.p2.x = m.p2.x * s + m.p1.x * t;
+    
+    return result;
+}
+
+// Constrains the motor to traverse the shortest arc
+kln_motor kln_constrain(in kln_motor m)
+{
+    kln_motor result;
+    
+    // Check if the scalar part (first component) is negative
+    if (m.p1.x < 0.0) {
+        // Flip both p1 and p2 to ensure shortest arc
+        result.p1 = -m.p1;
+        result.p2 = -m.p2;
+    } else {
+        result.p1 = m.p1;
+        result.p2 = m.p2;
+    }
+    
+    return result;
+}
+
 // Inverse of a motor (conjugate for normalized dual quaternions)
 kln_motor kln_inverse(in kln_motor m)
 {
@@ -339,6 +382,10 @@ void main() {
     ,kln_add(kln_mul(GetMotor(boneIndex2), fragBoneWeights.z)
     ,kln_mul(GetMotor(boneIndex3), fragBoneWeights.w))));
     
+    // CRITICAL: Constrain and normalize the interpolated motor
+    interpolatedMotor = kln_constrain(interpolatedMotor);
+    interpolatedMotor = kln_normalize(interpolatedMotor);
+    
     // Get the inverse motor and extract the rotational part (rotor) for direction transformation
     kln_motor inverseMotor = kln_inverse(interpolatedMotor);
     kln_rotor inverseRotor;
@@ -347,19 +394,19 @@ void main() {
     // Transform ray direction to T-pose space using inverse rotor
     kln_point rayDirPoint = kln_point(vec4(0.0, rayDir)); // Direction vector (w=0)
     kln_point transformedRayDirPoint = kln_apply(inverseRotor, rayDirPoint);
-    vec3 transformedRayDir = transformedRayDirPoint.p3.yzw;
+    vec3 transformedRayDir = normalize(transformedRayDirPoint.p3.yzw); // CRITICAL: Re-normalize after transformation
 
     bool hitEllipsoidBorder = false;
     const int maxSteps = 128;
     const float minStep = 0.001;
 
     float depth = 0.0;
-
+    int steps = 0;
     for (int i = 0; i < maxSteps; ++i) {
         vec3 pos = rayOrigin + transformedRayDir * depth;
         float ellipsoidDist = ellipsoidSDF(pos, clippingVolumePosition, clippingVolumeScale);
 
-        const float EPSILON = 0.0001;
+        const float EPSILON = 0.00001;
         const float MAX_DIST = 200.;
         if (ellipsoidDist >= 0) 
         {
@@ -367,6 +414,7 @@ void main() {
             break;
         }
         depth += max(abs(ellipsoidDist),minStep);
+        steps++;
 
         if(depth >= MAX_DIST) break;
     }
@@ -380,7 +428,7 @@ void main() {
         if(sampledDepth > 0.5025)
             discard;
         // Ray hit ellipsoid border while still inside mesh - render wound surface
-        finalColor = vec4(0.8, 0.1, 0.1, 1.0); // Red wound color
+        finalColor = vec4(steps/float(maxSteps), 0.1, 0.1, 1.0); // Red wound color
     } else {
         // Ray didn't hit anything definitive - fallback
         finalColor = vec4(1,0,1, 1.0); // pink error color
