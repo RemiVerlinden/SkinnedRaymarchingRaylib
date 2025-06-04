@@ -1329,6 +1329,7 @@ RLAPI Rectangle GetCollisionRec(Rectangle rec1, Rectangle rec2);                
 // Image loading functions
 // NOTE: These functions do not require GPU access
 RLAPI Image LoadImage(const char *fileName);                                                             // Load image from file into CPU memory (RAM)
+RLAPI Image LoadImageEXR(const char *fileName);                                                          // DEMO CUSTOM EXTENSION
 RLAPI Image LoadImageRaw(const char *fileName, int width, int height, int format, int headerSize);       // Load image from RAW file data
 RLAPI Image LoadImageAnim(const char *fileName, int *frames);                                            // Load image sequence from file (frames appended to image.data)
 RLAPI Image LoadImageAnimFromMemory(const char *fileType, const unsigned char *fileData, int dataSize, int *frames); // Load image sequence from memory buffer
@@ -1419,8 +1420,10 @@ RLAPI void ImageDrawTextEx(Image *dst, Font font, const char *text, Vector2 posi
 // NOTE: These functions require GPU access
 RLAPI Texture2D LoadTexture(const char* fileName);                                                       // Load texture from file into GPU memory (VRAM)
 RLAPI Texture Load3DTextureSDF(const char* fileName);                                                     // DEMO CUSTOM EXTENSION
+RLAPI Texture Load3DTextureWeight(const char* fileName);                                                 // DEMO CUSTOM EXTENSION
 RLAPI Texture2D LoadTextureFromImage(Image image);                                                       // Load texture from image data
 RLAPI Texture2D Load3DTextureSDFFromImage(Image image);                                                     // DEMO CUSTOM EXTENSION
+RLAPI Texture2D Load3DTextureWeightFromImage(Image image);                                                     // DEMO CUSTOM EXTENSION
 RLAPI TextureCubemap LoadTextureCubemap(Image image, int layout);                                        // Load cubemap from image, multiple image cubemap layouts supported
 RLAPI RenderTexture2D LoadRenderTexture(int width, int height);                                          // Load texture for rendering (framebuffer)
 RLAPI bool IsTextureValid(Texture2D texture);                                                            // Check if a texture is valid (loaded in GPU)

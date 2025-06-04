@@ -411,6 +411,128 @@ Image LoadImage(const char* fileName)
 	return image;
 }
 
+// manualFormat is very important!
+// Choose RL_PIXELFORMAT_UNCOMPRESSED_R16 for buffer with only R channel data
+// Choose RL_PIXELFORMAT_UNCOMPRESSED_R16G16B16A16 for buffer all 4 RGBA channel data
+// Normally EXR allows encoding this information in the header, but my houdini EXR export does not do that so I just manually choose
+// the format based on the file I use as input. I already know my Weight texture is RGBA and the SDF texture is only R. so I know what to pick.
+Image LoadImageEXR(const char* fileName, rlPixelFormat manualFormat)
+{
+	Image image = { 0 };
+	// Own hacky solution to allow reading in EXR textures, this is bad as we hardcode EXR as this magic format that only supports singlechannel half floats because thats what I need right now
+	// Note: this is a lot of code that does a whole lot of nothing. only function of true importance is LoadEXR()
+#if defined(SUPPORT_FILEFORMAT_EXR)
+	{
+		const char* fileType = GetFileExtension(fileName);
+		if ((strcmp(fileType, ".exr") == 0) || (strcmp(fileType, ".EXR") == 0))
+		{
+
+			EXRVersion exr_version;
+			{
+				int ret = ParseEXRVersionFromFile(&exr_version, fileName);
+				if (ret != 0)
+				{
+					TRACELOG(LOG_WARNING, "IMAGE: Invalid EXR file: %s", fileName);
+					return image;
+				}
+			}
+
+			if (exr_version.multipart)
+			{
+				// must be multipart flag is false.
+				return image;
+			}
+
+			// 2. Read EXR header
+			EXRHeader exr_header;
+			InitEXRHeader(&exr_header);
+			{
+				const char* err = NULL; // or `nullptr` in C++11 or later.
+				int ret = ParseEXRHeaderFromFile(&exr_header, &exr_version, fileName, &err);
+				if (ret != 0)
+				{
+					TRACELOG(LOG_WARNING, "IMAGE: Parse EXR err: %s", err);
+					FreeEXRErrorMessage(err); // free's buffer for an error message
+					FreeEXRHeader(&exr_header);
+					return image;
+				}
+
+				// Read HALF channel as FLOAT.
+				for (int i = 0; i < exr_header.num_channels; i++)
+				{
+					if (exr_header.pixel_types[i] == TINYEXR_PIXELTYPE_HALF)
+					{
+						exr_header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_HALF;
+						TRACELOG(LOG_INFO, "IMAGE: EXR pixel format is HALF FLOAT -> GOOD!");
+						break;
+					}
+				}
+
+			}
+			// --- load float RGBA EXR ---
+			float* hdrData = NULL;
+			int exrWidth = 0, exrHeight = 0;
+			const char* errMsg = NULL;
+
+			// tinyexr call
+			{
+				EXRImage exr_image;
+				InitEXRImage(&exr_image);
+
+				// Here data is stored whatever requested_pixel_types is, it stores data as chunks of same color in 4 channels instead of RGBA per chunk
+				int ret = LoadEXRImageFromFile(&exr_image, &exr_header, fileName, &errMsg);
+
+				// this returns buffer with data stored as RGBA32 where each coninuous 16 byte chunk is 4 byte R, then G, then B, then A
+				//int ret = LoadEXR(&hdrData, &exrWidth, &exrHeight, fileName, &errMsg);
+				if (ret != TINYEXR_SUCCESS)
+				{
+					TRACELOG(LOG_WARNING, "IMAGE: Failed to load EXR file: %s", errMsg);
+					FreeEXRErrorMessage(errMsg);
+				}
+				else
+				{
+					image.width = exr_image.width;
+					image.height = exr_image.height;
+					image.mipmaps = 1;
+
+					int colorChannelByteSize = image.width * image.height * sizeof(unsigned short);
+					image.data = RL_MALLOC(colorChannelByteSize); // HARDCODE I JUST NEED IT TO WORK | I KNOW DATA IS HALF FLOAT = UNSIGNED SHORT
+
+					// for some amazing reason exr_image.images[channels] stores the RGBA channels backwards meaning that the A channel is in [0] and the R channel is [3]
+					{
+
+						bool foundChannel = false;
+						for (int i = 0; i < exr_header.num_channels; i++)
+						{
+							if (exr_header.channels[i].name[0] != 'R') continue;// hardcode R for red channel, only reason I know is because manual debugging tinyexr.h line 6355
+							memcpy(image.data, exr_image.images[i], colorChannelByteSize); // Copy required data to image
+							foundChannel = true;
+						}
+						if (!foundChannel)
+							TRACELOG(LOG_WARNING, "IMAGE: Could not find RED channel in EXR file");
+					}
+
+
+					// TinyEXR LoadEXR returns 32-bit float RGBA data
+					image.format = RL_PIXELFORMAT_UNCOMPRESSED_R16;
+					TRACELOG(LOG_INFO, "IMAGE: EXR data loaded (%ix%i | 32-BIT FLOAT)", image.width, image.height);
+				}
+				FreeEXRImage(&exr_image);
+				FreeEXRHeader(&exr_header);
+			}
+			if (image.data != NULL) TRACELOG(LOG_INFO, "IMAGE: Data loaded successfully (%ix%i | %s | %i mipmaps)", image.width, image.height, rlGetPixelFormatName(image.format), image.mipmaps);
+			else TRACELOG(LOG_WARNING, "IMAGE: Failed to load image data");
+
+			return image;
+		}
+	}
+#endif
+
+	TRACELOG(LOG_WARNING, "IMAGE: EXR THIS SHOULD NEVER BE CALLED CHECK rtextures.c:LoadImageEXR()");
+
+	return image;
+}
+
 // Load an image from RAW file data
 Image LoadImageRaw(const char* fileName, int width, int height, int format, int headerSize)
 {
@@ -4250,7 +4372,7 @@ Texture Load3DTextureSDF(const char* fileName)
 {
 	Texture texture3D = { 0 };
 
-	Image image3D = LoadImage(fileName);
+	Image image3D = LoadImageEXR(fileName, PIXELFORMAT_UNCOMPRESSED_R16);
 
 	if (image3D.data != NULL)
 	{
@@ -4263,6 +4385,51 @@ Texture Load3DTextureSDF(const char* fileName)
 // Load a texture from image data
 // NOTE: image is not unloaded, it must be done manually
 Texture2D Load3DTextureSDFFromImage(Image image)
+{
+	Texture texture = { 0 };
+
+	if ((image.width != 0) && (image.height != 0))
+	{
+		// Calculate 3D dimensions from 2D slice layout
+		// Formula: b^3 = a^2, so b = a^(2/3) where a is the 2D image dimension
+		//int cubeSize = (int)powf((float)image.width, 2.0f / 3.0f);
+		// 
+		// Compute volume resolution (res) = (2/3 power of image.width):
+		//   if width=4913, (4913)^(2/3) = 289 exactly.
+		float  f = powf((float)image.width, 2.0f / 3.0f);
+		int    cubeSize = (int)(f + 0.5f);  // = 289
+
+
+		texture.id = rlLoad3DTextureSDF(image.data, cubeSize, image.format, image.mipmaps);
+	}
+	else TRACELOG(LOG_WARNING, "IMAGE: Data is not valid to load 3D texture");
+
+	texture.width = image.width;   // Store original 2D dimensions for reference
+	texture.height = image.height;
+	texture.mipmaps = image.mipmaps;
+	texture.format = image.format;
+
+	return texture;
+}
+
+Texture Load3DTextureWeight(const char* fileName)
+{
+	Texture texture3D = { 0 };
+
+	Image image3D = LoadImageEXR(fileName, PIXELFORMAT_UNCOMPRESSED_R16G16B16A16);
+
+	if (image3D.data != NULL)
+	{
+		texture3D = Load3DTextureWeightFromImage(image3D);
+		UnloadImage(image3D);
+	}
+
+	return texture3D;
+}
+
+// Load a texture from image data
+// NOTE: image is not unloaded, it must be done manually
+Texture2D Load3DTextureWeightFromImage(Image image)
 {
 	Texture texture = { 0 };
 

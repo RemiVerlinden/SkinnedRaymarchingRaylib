@@ -49,6 +49,18 @@ void DQ::ResourceManager::LoadTextureSDF(const char* fileName)
     }
 }
 
+void DQ::ResourceManager::LoadTextureWeight(const char* fileNameWeightData, const char* fileNameWeightIndex)
+{
+    // They are both 4 channel textures with data, they can both be loaded in same manner :)
+    m_TextureWeightData = Load3DTextureWeight(fileNameWeightData);
+    m_TextureWeightIndex = Load3DTextureWeight(fileNameWeightIndex);
+
+    if (m_TextureWeightData.id < 0)
+        TRACELOG(LOG_ERROR, "Failed to load EXR weight DATA texture: %s", fileNameWeightData);
+    if (m_TextureWeightIndex.id < 0)
+        TRACELOG(LOG_ERROR, "Failed to load EXR weight INDEX texture: %s", fileNameWeightIndex);
+}
+
 void DQ::ResourceManager::DebugSaveImageData(const char* fileName, const char* outputFileName)
 {
     Image loadedImage = LoadImage(fileName);

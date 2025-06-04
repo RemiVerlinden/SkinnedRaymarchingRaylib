@@ -26,6 +26,7 @@ void DQ::DemoScene::Init()
 	m_ResourceManager.LoadAllShaders();
 	m_ResourceManager.LoadModel("models/gltf/pirate/pirate.glb");
 	m_ResourceManager.LoadTextureSDF("textures/SDF/pirate_SDF_50U.exr");
+	m_ResourceManager.LoadTextureWeight("textures/SDF/Pirate_4ChannelWeightsN_289.exr", "textures/SDF/Pirate_4ChannelWeightIndex_289.exr");
 	
 	// Debug: Save the loaded image data to verify loading
 	//m_ResourceManager.DebugSaveImageData("textures/SDF/pirate_SDF_50U.exr", "debug_pirate_sdf.png");
