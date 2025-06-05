@@ -49,16 +49,16 @@ void DQ::ResourceManager::LoadTextureSDF(const char* fileName)
     }
 }
 
-void DQ::ResourceManager::LoadTextureWeight(const char* fileNameWeightData, const char* fileNameWeightIndex)
+void DQ::ResourceManager::LoadTextureWeight(const char* fileNameBoneWeight, const char* fileNameBoneIndex)
 {
     // They are both 4 channel textures with data, they can both be loaded in same manner :)
-    m_TextureWeightData = Load3DTextureWeight(fileNameWeightData);
-    m_TextureWeightIndex = Load3DTextureWeight(fileNameWeightIndex);
+    m_TextureBoneWeight = Load3DTextureWeight(fileNameBoneWeight);
+    m_TextureBoneIndex = Load3DTextureWeight(fileNameBoneIndex);
 
-    if (m_TextureWeightData.id < 0)
-        TRACELOG(LOG_ERROR, "Failed to load EXR weight DATA texture: %s", fileNameWeightData);
-    if (m_TextureWeightIndex.id < 0)
-        TRACELOG(LOG_ERROR, "Failed to load EXR weight INDEX texture: %s", fileNameWeightIndex);
+    if (m_TextureBoneWeight.id < 0)
+        TRACELOG(LOG_ERROR, "Failed to load EXR weight DATA texture: %s", fileNameBoneWeight);
+    if (m_TextureBoneIndex.id < 0)
+        TRACELOG(LOG_ERROR, "Failed to load EXR weight INDEX texture: %s", fileNameBoneIndex);
 }
 
 void DQ::ResourceManager::DebugSaveImageData(const char* fileName, const char* outputFileName)
@@ -142,13 +142,23 @@ Texture DQ::ResourceManager::GetTextureSDF() const
 	return m_TextureBindPoseSDF;
 }
 
+Texture DQ::ResourceManager::GetTextureBoneWeight() const
+{
+    return m_TextureBoneWeight;
+}
+
+Texture DQ::ResourceManager::GetTextureBoneIndex() const
+{
+    return m_TextureBoneIndex;
+}
+
 void DQ::ResourceManager::Shutdown()
 {
 	// needs rework, if we dont load the texture we unload anyways
 	{
         ::UnloadTexture(m_TextureBindPoseSDF);
-        ::UnloadTexture(m_TextureWeightData);
-        ::UnloadTexture(m_TextureWeightIndex);
+        ::UnloadTexture(m_TextureBoneWeight);
+        ::UnloadTexture(m_TextureBoneIndex);
 	}
     {
         for (int i = 0; i < m_Shaders.size(); i++) UnloadShader(m_Shaders[i]);

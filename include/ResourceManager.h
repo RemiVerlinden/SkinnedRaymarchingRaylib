@@ -32,12 +32,14 @@ namespace DQ {
         void LoadAllShaders();
         void LoadModel(const char* fileName);
         void LoadTextureSDF(const char* fileName);
-        void LoadTextureWeight(const char* fileNameWeightData, const char* fileNameWeightIndex);
+        void LoadTextureWeight(const char* fileNameBoneWeight, const char* fileNameBoneIndex);
         void DebugSaveImageData(const char* fileName, const char* outputFileName);
 
         std::vector<Shader> const& GetShaders();
         CombinedModelData& GetModelData();
         Texture GetTextureSDF() const;
+        Texture GetTextureBoneWeight() const;
+        Texture GetTextureBoneIndex() const;
 
         void Shutdown();
     private:
@@ -45,8 +47,8 @@ namespace DQ {
         CombinedModelData m_ModelData;
         std::vector<Shader> m_Shaders; // cant figure out why, but the fact that this is a vector is causing memory leaks???? if I use a static array, I get no problems.
         Texture m_TextureBindPoseSDF; // 3D texture stored as raylib Texture struct - need rework
-        Texture m_TextureWeightData; // 3D texture with 4 channel weight data (volumetric 4 weight blend skinning)
-        Texture m_TextureWeightIndex; // 3D texture with 4 channel weight index data
+        Texture m_TextureBoneWeight; // 3D texture with 4 channel weight data (volumetric 4 weight blend skinning)
+        Texture m_TextureBoneIndex; // 3D texture with 4 channel weight index data
     };
 }
 
