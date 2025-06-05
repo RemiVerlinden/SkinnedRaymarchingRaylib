@@ -146,7 +146,9 @@ void DQ::ResourceManager::Shutdown()
 {
 	// needs rework, if we dont load the texture we unload anyways
 	{
-		::UnloadTexture(m_TextureBindPoseSDF);
+        ::UnloadTexture(m_TextureBindPoseSDF);
+        ::UnloadTexture(m_TextureWeightData);
+        ::UnloadTexture(m_TextureWeightIndex);
 	}
     {
         for (int i = 0; i < m_Shaders.size(); i++) UnloadShader(m_Shaders[i]);
