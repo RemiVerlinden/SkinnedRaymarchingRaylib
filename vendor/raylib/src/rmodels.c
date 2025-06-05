@@ -1535,10 +1535,12 @@ void DrawMesh(Mesh mesh, Material material, Matrix transform)
             rlActiveTextureSlot(i);
 
             // Enable texture for active slot
-            if ((i == MATERIAL_MAP_IRRADIANCE) ||
-                (i == MATERIAL_MAP_PREFILTER) ||
-                (i == MATERIAL_MAP_CUBEMAP)) rlEnableTextureCubemap(material.maps[i].texture.id);
-            else if (i == MATERIAL_MAP_SDF) rlEnableTexture3D(material.maps[i].texture.id); // DEMO CUSTOM EXTENSION
+            //if ((i == MATERIAL_MAP_IRRADIANCE) ||
+            //    (i == MATERIAL_MAP_PREFILTER) ||
+            //    (i == MATERIAL_MAP_CUBEMAP)) rlEnableTextureCubemap(material.maps[i].texture.id);
+            if (i == MATERIAL_MAP_SDF ||
+                i == MATERIAL_MAP_BONEWEIGHT ||
+                i == MATERIAL_MAP_BONEINDEX) rlEnableTexture3D(material.maps[i].texture.id); // DEMO CUSTOM EXTENSION
             else rlEnableTexture(material.maps[i].texture.id);
 
             rlSetUniform(material.shader.locs[SHADER_LOC_MAP_DIFFUSE + i], &i, SHADER_UNIFORM_INT, 1);
@@ -1657,9 +1659,12 @@ void DrawMesh(Mesh mesh, Material material, Matrix transform)
             rlActiveTextureSlot(i);
 
             // Disable texture for active slot
-            if ((i == MATERIAL_MAP_IRRADIANCE) ||
-                (i == MATERIAL_MAP_PREFILTER) ||
-                (i == MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
+            //if ((i == MATERIAL_MAP_IRRADIANCE) ||
+            //    (i == MATERIAL_MAP_PREFILTER) ||
+            //    (i == MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
+            if ((i == MATERIAL_MAP_SDF) ||
+                (i == MATERIAL_MAP_BONEWEIGHT) ||
+                (i == MATERIAL_MAP_BONEINDEX)) rlDisableTexture3D();
             else rlDisableTexture();
         }
     }
@@ -1783,9 +1788,12 @@ void DrawMeshInstanced(Mesh mesh, Material material, const Matrix *transforms, i
             rlActiveTextureSlot(i);
 
             // Enable texture for active slot
-            if ((i == MATERIAL_MAP_IRRADIANCE) ||
-                (i == MATERIAL_MAP_PREFILTER) ||
-                (i == MATERIAL_MAP_CUBEMAP)) rlEnableTextureCubemap(material.maps[i].texture.id);
+            //if ((i == MATERIAL_MAP_IRRADIANCE) ||
+            //    (i == MATERIAL_MAP_PREFILTER) ||
+            //    (i == MATERIAL_MAP_CUBEMAP)) rlEnableTextureCubemap(material.maps[i].texture.id);
+            if (i == MATERIAL_MAP_SDF ||
+                i == MATERIAL_MAP_BONEWEIGHT ||
+                i == MATERIAL_MAP_BONEINDEX) rlEnableTexture3D(material.maps[i].texture.id); // DEMO CUSTOM EXTENSION
             else rlEnableTexture(material.maps[i].texture.id);
 
             rlSetUniform(material.shader.locs[SHADER_LOC_MAP_DIFFUSE + i], &i, SHADER_UNIFORM_INT, 1);
@@ -1902,9 +1910,12 @@ void DrawMeshInstanced(Mesh mesh, Material material, const Matrix *transforms, i
             rlActiveTextureSlot(i);
 
             // Disable texture for active slot
-            if ((i == MATERIAL_MAP_IRRADIANCE) ||
-                (i == MATERIAL_MAP_PREFILTER) ||
-                (i == MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
+            //if ((i == MATERIAL_MAP_IRRADIANCE) ||
+            //    (i == MATERIAL_MAP_PREFILTER) ||
+            //    (i == MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
+            if ((i == MATERIAL_MAP_SDF) ||
+                (i == MATERIAL_MAP_BONEWEIGHT) ||
+                (i == MATERIAL_MAP_BONEINDEX)) rlDisableTexture3D();
             else rlDisableTexture();
         }
     }

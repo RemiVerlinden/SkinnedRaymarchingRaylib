@@ -23,10 +23,14 @@ void DQ::ResourceManager::LoadAllShaders()
     Shader SkinnedRaymarchingShader = LoadShader(TextFormat("shaders/glsl%i/skinnedraymarching.vert", GLSL_VERSION),
         TextFormat("shaders/glsl%i/skinnedraymarching.frag", GLSL_VERSION));
 
+    Shader SkinnedRaymarchingShaderNonlinear = LoadShader(TextFormat("shaders/glsl%i/skinnedraymarchingnonlinear.vert", GLSL_VERSION),
+        TextFormat("shaders/glsl%i/skinnedraymarchingnonlinear.frag", GLSL_VERSION));
+
 	m_Shaders.push_back(skinningShader);
 	m_Shaders.push_back(DQSkinningShader);
     m_Shaders.push_back(StaticRaymarchingShader);
     m_Shaders.push_back(SkinnedRaymarchingShader);
+    m_Shaders.push_back(SkinnedRaymarchingShaderNonlinear);
 }
 
 void DQ::ResourceManager::LoadModel(const char* fileName)

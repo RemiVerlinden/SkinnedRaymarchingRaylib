@@ -654,7 +654,7 @@ RLAPI void rlActiveTextureSlot(int slot);               // Select and active a t
 RLAPI void rlEnableTexture(unsigned int id);            // Enable texture
 RLAPI void rlDisableTexture(void);                      // Disable texture
 RLAPI void rlEnableTexture3D(unsigned int id);          // Enable 3D texture
-RLAPI void rlDisableTexture3D(unsigned int id);         // Enable 3D texture
+RLAPI void rlDisableTexture3D(void);                    // Disable 3D texture
 RLAPI void rlEnableTextureCubemap(unsigned int id);     // Enable texture cubemap
 RLAPI void rlDisableTextureCubemap(void);               // Disable texture cubemap
 RLAPI void rlTextureParameters(unsigned int id, int param, int value); // Set texture parameters (filter, wrap)

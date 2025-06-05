@@ -763,16 +763,26 @@ typedef enum {
     MATERIAL_MAP_OCCLUSION,         // Ambient occlusion material
     MATERIAL_MAP_EMISSION,          // Emission material
     MATERIAL_MAP_HEIGHT,            // Heightmap material
-    MATERIAL_MAP_CUBEMAP,           // Cubemap material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
-    MATERIAL_MAP_IRRADIANCE,        // Irradiance material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
-    MATERIAL_MAP_PREFILTER,         // Prefilter material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
-    MATERIAL_MAP_BRDF,              // Brdf material
-    MATERIAL_MAP_SDF                // CUSTOM DEMO SDF material (NOTE: Uses GL_TEXTURE_3D)
+    //MATERIAL_MAP_CUBEMAP,           // Cubemap material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
+    //MATERIAL_MAP_IRRADIANCE,        // Irradiance material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
+    //MATERIAL_MAP_PREFILTER,         // Prefilter material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
+    MATERIAL_MAP_SDF,                // CUSTOM DEMO SDF material (NOTE: Uses GL_TEXTURE_3D)
+    MATERIAL_MAP_BONEWEIGHT,         // CUSTOM DEMO Weight texture (NOTE: Uses GL_TEXTURE_3D) 4 channel weight texture each float 0-1
+    MATERIAL_MAP_BONEINDEX,          // CUSTOM DEMO SDF material (NOTE: Uses GL_TEXTURE_3D) 4 channel index texture NOTE: INT STORED AS FLOAT SO AFTER SAMPLE MUST DO (INT)([SAMPLE]*255)
+    MATERIAL_MAP_BRDF              // Brdf material
+
 } MaterialMapIndex;
 
 #define MATERIAL_MAP_DIFFUSE      MATERIAL_MAP_ALBEDO
 #define MATERIAL_MAP_SPECULAR     MATERIAL_MAP_METALNESS
 
+//------------------------------------------------------------------------------------------------------------
+// NOTE: SHADER_LOC_MAP_CUBEMAP, SHADER_LOC_MAP_IRRADIANCE and SHADER_LOC_MAP_PREFILTER have been commented out
+//       to make room for custom demo shader locations (SDF,BONEWEIGHT & BONEINDEX).
+//       This is necessary because the max number of shader location indices is 32.
+//       The commented-out entries are not needed for this demo.
+//------------------------------------------------------------------------------------------------------------
+//
 // Shader location index
 typedef enum {
     SHADER_LOC_VERTEX_POSITION = 0, // Shader location: vertex attribute: position
@@ -797,16 +807,21 @@ typedef enum {
     SHADER_LOC_MAP_OCCLUSION,       // Shader location: sampler2d texture: occlusion
     SHADER_LOC_MAP_EMISSION,        // Shader location: sampler2d texture: emission
     SHADER_LOC_MAP_HEIGHT,          // Shader location: sampler2d texture: height
-    SHADER_LOC_MAP_CUBEMAP,         // Shader location: samplerCube texture: cubemap
-    SHADER_LOC_MAP_IRRADIANCE,      // Shader location: samplerCube texture: irradiance
-    SHADER_LOC_MAP_PREFILTER,       // Shader location: samplerCube texture: prefilter
-    SHADER_LOC_MAP_BRDF,            // Shader location: sampler2d texture: brdf
+    //SHADER_LOC_MAP_CUBEMAP,         // Shader location: samplerCube texture: cubemap
+    //SHADER_LOC_MAP_IRRADIANCE,      // Shader location: samplerCube texture: irradiance
+    //SHADER_LOC_MAP_PREFILTER,       // Shader location: samplerCube texture: prefilter
     SHADER_LOC_MAP_SDF,             // Shader location: sampler3D texture: sdf - DEMO CUSTOM EXTENSION
+    SHADER_LOC_MAP_BONEWEIGHT,      // Shader location: sampler3D texture: BONE WEIGHTS 4 CHANNEL - DEMO CUSTOM EXTENSION
+    SHADER_LOC_MAP_BONEINDEX,       // Shader location: sampler3D texture: BONE INDICES 4 CHANNEL - DEMO CUSTOM EXTENSION
+    SHADER_LOC_MAP_BRDF,            // Shader location: sampler2d texture: brdf
     SHADER_LOC_VERTEX_BONEIDS,      // Shader location: vertex attribute: boneIds
     SHADER_LOC_VERTEX_BONEWEIGHTS,  // Shader location: vertex attribute: boneWeights
     SHADER_LOC_BONE_MATRICES,       // Shader location: array of matrices uniform: boneMatrices
     SHADER_LOC_VERTEX_INSTANCE_TX   // Shader location: vertex attribute: instanceTransform
 } ShaderLocationIndex;
+//------------------------------------------------------------------------------------------------------------
+// NOTE: READ NOTE ABBOVE ENUM    <----------------------
+//------------------------------------------------------------------------------------------------------------
 
 #define SHADER_LOC_MAP_DIFFUSE      SHADER_LOC_MAP_ALBEDO
 #define SHADER_LOC_MAP_SPECULAR     SHADER_LOC_MAP_METALNESS

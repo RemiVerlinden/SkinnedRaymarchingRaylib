@@ -1386,6 +1386,8 @@ Shader LoadShaderFromMemory(const char *vsCode, const char *fsCode)
 
         // DEMO CUSTOM EXTENSION
         shader.locs[SHADER_LOC_MAP_SDF] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER3D_SDF_NAME_TEXTURE);
+        shader.locs[SHADER_LOC_MAP_BONEWEIGHT] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER3D_BONEWEIGHT_NAME_TEXTURE);
+        shader.locs[SHADER_LOC_MAP_BONEINDEX] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER3D_BONEINDEX_NAME_TEXTURE);
     }
 
     return shader;

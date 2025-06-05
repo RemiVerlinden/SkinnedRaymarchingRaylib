@@ -494,7 +494,7 @@ Image LoadImageEXR(const char* fileName, rlPixelFormat manualFormat)
 					image.mipmaps = 1;
 
 					// I KNOW DATA IS HALF FLOAT = UNSIGNED SHORT
-					int bytesPerPixel;
+					int bytesPerPixel = 0; 
 					if (manualFormat == PIXELFORMAT_UNCOMPRESSED_R16)
 						bytesPerPixel = sizeof(unsigned short); 
 					else if (manualFormat == PIXELFORMAT_UNCOMPRESSED_R16G16B16A16)
@@ -544,7 +544,7 @@ Image LoadImageEXR(const char* fileName, rlPixelFormat manualFormat)
 
 					// TinyEXR LoadEXR returns 32-bit float RGBA data
 					image.format = manualFormat;
-					TRACELOG(LOG_INFO, "IMAGE: EXR data loaded (%ix%i | 32-BIT FLOAT)", image.width, image.height);
+					TRACELOG(LOG_INFO, "IMAGE: EXR data loaded (%ix%i)", image.width, image.height);
 				}
 				FreeEXRImage(&exr_image);
 				FreeEXRHeader(&exr_header);

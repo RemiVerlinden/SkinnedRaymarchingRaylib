@@ -7,6 +7,7 @@
 #include "rlgl.h"
 
 Transform clippingVolumeGizmoTransform = GizmoIdentity();
+Transform shaderLightGizmoTransform = GizmoIdentity();
 
 
 namespace DQ
@@ -23,6 +24,8 @@ void DQ::DemoScene::Init()
 	clippingVolumeGizmoTransform.translation = { 0,0.92,0 };
 	clippingVolumeGizmoTransform.scale = { 0.15,0.20,0.15 };
 
+	shaderLightGizmoTransform.translation = {0,1,-1};
+
 	m_ResourceManager.LoadAllShaders();
 	m_ResourceManager.LoadModel("models/gltf/pirate/pirate.glb");
 	m_ResourceManager.LoadTextureSDF("textures/SDF/pirate_SDF_50U.exr");
@@ -33,6 +36,8 @@ void DQ::DemoScene::Init()
 
 	Model& model = m_ResourceManager.GetModelData().model;
 	model.materials[1].maps[MATERIAL_MAP_SDF].texture = m_ResourceManager.GetTextureSDF();
+	model.materials[1].maps[MATERIAL_MAP_BONEWEIGHT].texture = m_ResourceManager.GetTextureBoneWeight();
+	model.materials[1].maps[MATERIAL_MAP_BONEINDEX].texture = m_ResourceManager.GetTextureBoneIndex();
 	
 }
 
@@ -40,6 +45,7 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 {
 	if (IsKeyPressed(KEY_F))			m_ActiveShader = (m_ActiveShader == ShaderTypes::LINEARBLENDSKINNING) ? ShaderTypes::DUALQUATERNIONBLENDSKINNING : ShaderTypes::LINEARBLENDSKINNING;
 	if (IsKeyPressed(KEY_G))			m_ActiveShader = (m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHING) ? ShaderTypes::STATICRAYMARCHING : ShaderTypes::SKINNEDRAYMARCHING;
+	if (IsKeyPressed(KEY_H))			m_ActiveShader = (m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR) ? ShaderTypes::SKINNEDRAYMARCHING : ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR;
 	if (IsKeyPressed(KEY_T))			m_ActiveAnimation = std::min(++m_ActiveAnimation, m_ResourceManager.GetModelData().animcount - 1);
 	if (IsKeyPressed(KEY_R))			m_ActiveAnimation = std::max(--m_ActiveAnimation, 0); 
 
@@ -66,63 +72,75 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	// UPDATE SHADER 
 	modeldata.model.materials[1].shader = shader;
 	Model const& model					= modeldata.model;
-	if (m_ActiveShader == ShaderTypes::DUALQUATERNIONBLENDSKINNING)
+	switch (m_ActiveShader)
 	{
-		int loc							= GetShaderLocation(shader, "boneDualQuaternions"); // this should not be done every frame, only once and cache
-		SetShaderValueV(shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
-	}
-	else if (m_ActiveShader == ShaderTypes::STATICRAYMARCHING)
-	{
-		int loc = GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
-		SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
+		case ShaderTypes::DUALQUATERNIONBLENDSKINNING:
+		{
+			int loc = GetShaderLocation(shader, "boneDualQuaternions"); // this should not be done every frame, only once and cache
+			SetShaderValueV(shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
+			break;
+		}
+		case ShaderTypes::STATICRAYMARCHING:
+		{
+			int loc = GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
+			SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
 
-		loc		= GetShaderLocation(shader, "clippingVolumeScale"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.scale, SHADER_UNIFORM_VEC3, 1);
+			loc = GetShaderLocation(shader, "clippingVolumeScale"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.scale, SHADER_UNIFORM_VEC3, 1);
 
-		loc		= GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
-		
-		// SDF bounds for 50U pirate mesh (from box_bounds.txt)
-		Vector3 minBounds{ -0.7175f, -0.0325f, -0.7275f };
-		Vector3 maxBounds{ 0.7225f, 1.4075f, 0.7125f };
-		// Set SDF bounds uniforms
-		loc = GetShaderLocation(shader, "minBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &minBounds, SHADER_UNIFORM_VEC3, 1);
-		loc = GetShaderLocation(shader, "maxBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &maxBounds, SHADER_UNIFORM_VEC3, 1);
+			loc = GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
 
-		float time = GetTime();
-		loc = GetShaderLocation(shader, "time"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &time, SHADER_UNIFORM_FLOAT, 1);
+			// SDF bounds for 50U pirate mesh (from box_bounds.txt)
+			Vector3 minBounds{ -0.7175f, -0.0325f, -0.7275f };
+			Vector3 maxBounds{ 0.7225f, 1.4075f, 0.7125f };
+			// Set SDF bounds uniforms
+			loc = GetShaderLocation(shader, "minBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &minBounds, SHADER_UNIFORM_VEC3, 1);
+			loc = GetShaderLocation(shader, "maxBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &maxBounds, SHADER_UNIFORM_VEC3, 1);
 
-	}
-	else if(m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHING)
-	{
-		int loc = GetShaderLocation(shader, "boneDualQuaternions"); // this should not be done every frame, only once and cache
-		SetShaderValueV(shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
+			float time = GetTime();
+			loc = GetShaderLocation(shader, "time"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &time, SHADER_UNIFORM_FLOAT, 1);
+			break;
+		}
+		case ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR:
+		{
+			int loc = GetShaderLocation(shader, "ellipsoidLightPosition"); // this should not be done every frame, only once and cache
+			SetShaderValueV(shader, loc, &shaderLightGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
+			//int loc = GetShaderLocation(shader, "ellipsoidLightColor"); // this should not be done every frame, only once and cache
+			//SetShaderValueV(shader, loc, Vector3{1,1,1}, SHADER_UNIFORM_VEC3, 1);
+			//break; Dont break, apply code from SKINNEDRAYMARCHING aswell
+		}
+		case ShaderTypes::SKINNEDRAYMARCHING:
+		{
+			int loc = GetShaderLocation(shader, "boneDualQuaternions"); // this should not be done every frame, only once and cache
+			SetShaderValueV(shader, loc, model.meshes[0].boneMotors, SHADER_UNIFORM_VEC4, anim.boneCount * 2);
 
-		loc = GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
-		SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
+			loc = GetShaderLocation(shader, "clippingVolumePosition"); // this should not be done every frame, only once and cache
+			SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
 
-		loc = GetShaderLocation(shader, "clippingVolumeScale"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.scale, SHADER_UNIFORM_VEC3, 1);
+			loc = GetShaderLocation(shader, "clippingVolumeScale"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &clippingVolumeGizmoTransform.scale, SHADER_UNIFORM_VEC3, 1);
 
-		loc = GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
+			loc = GetShaderLocation(shader, "cameraPosition"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
 
-		// SDF bounds for 50U pirate mesh (from box_bounds.txt)
-		Vector3 minBounds{ -0.7175f, -0.0325f, -0.7275f };
-		Vector3 maxBounds{ 0.7225f, 1.4075f, 0.7125f };
-		// Set SDF bounds uniforms
-		loc = GetShaderLocation(shader, "minBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &minBounds, SHADER_UNIFORM_VEC3, 1);
-		loc = GetShaderLocation(shader, "maxBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &maxBounds, SHADER_UNIFORM_VEC3, 1);
+			// SDF bounds for 50U pirate mesh (from box_bounds.txt)
+			Vector3 minBounds{ -0.7175f, -0.0325f, -0.7275f };
+			Vector3 maxBounds{ 0.7225f, 1.4075f, 0.7125f };
+			// Set SDF bounds uniforms
+			loc = GetShaderLocation(shader, "minBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &minBounds, SHADER_UNIFORM_VEC3, 1);
+			loc = GetShaderLocation(shader, "maxBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &maxBounds, SHADER_UNIFORM_VEC3, 1);
 
-		float time = GetTime();
-		loc = GetShaderLocation(shader, "time"); // this should not be done every frame, only once and cache 
-		SetShaderValueV(shader, loc, &time, SHADER_UNIFORM_FLOAT, 1);
-
+			float time = GetTime();
+			loc = GetShaderLocation(shader, "time"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &time, SHADER_UNIFORM_FLOAT, 1);
+			break;
+		}
 	}
 	//------------------------------------------------------------
 
@@ -140,12 +158,15 @@ void DQ::DemoScene::Draw()
 		DQ::DrawMesh(model.meshes[0], model.materials[1], model.transform);
 	}
 	{
-		if (m_ActiveShader == ShaderTypes::STATICRAYMARCHING)
+		if (m_ActiveShader >= ShaderTypes::STATICRAYMARCHING)
 		{
 			if (!IsCursorHidden())
 			{
 				DrawGizmo3D(GIZMO_TRANSLATE | GIZMO_SCALE, &clippingVolumeGizmoTransform);
 				DrawEllipsoidWires(clippingVolumeGizmoTransform, 8, 8, GREEN);
+
+				if(m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR)
+					DrawGizmo3D(GIZMO_TRANSLATE , &shaderLightGizmoTransform);
 			}
 		}
 	}
@@ -199,6 +220,16 @@ namespace DQ
 
 				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 25, 20, GOLD);
 				DrawText("STATIC RAYMARCH", 10, activeShaderTextHeight, 30, ORANGE);
+				break;
+			case ShaderTypes::SKINNEDRAYMARCHING:
+
+				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 25, 20, RED);
+				DrawText("SKINNED RAYMARCH", 10, activeShaderTextHeight, 30, RED);
+				break;
+			case ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR:
+
+				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 25, 20, PURPLE);
+				DrawText("SKINNED RAYMARCH NON-LINEAR", 10, activeShaderTextHeight, 30, PURPLE);
 				break;
 		}
 
