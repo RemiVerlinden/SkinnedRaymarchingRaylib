@@ -463,19 +463,17 @@ Image LoadImageEXR(const char* fileName, rlPixelFormat manualFormat)
 					if (exr_header.pixel_types[i] == TINYEXR_PIXELTYPE_HALF)
 					{
 						exr_header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_HALF;
-						TRACELOG(LOG_INFO, "IMAGE: EXR pixel format is HALF FLOAT -> GOOD!");
-						break;
+						if(i == 0)
+							TRACELOG(LOG_INFO, "IMAGE: EXR pixel format is HALF FLOAT -> GOOD!");
 					}
 				}
 
 			}
 			// --- load float RGBA EXR ---
-			float* hdrData = NULL;
-			int exrWidth = 0, exrHeight = 0;
-			const char* errMsg = NULL;
-
 			// tinyexr call
 			{
+				const char* errMsg = NULL;
+				
 				EXRImage exr_image;
 				InitEXRImage(&exr_image);
 
@@ -495,12 +493,21 @@ Image LoadImageEXR(const char* fileName, rlPixelFormat manualFormat)
 					image.height = exr_image.height;
 					image.mipmaps = 1;
 
-					int colorChannelByteSize = image.width * image.height * sizeof(unsigned short);
-					image.data = RL_MALLOC(colorChannelByteSize); // HARDCODE I JUST NEED IT TO WORK | I KNOW DATA IS HALF FLOAT = UNSIGNED SHORT
+					// I KNOW DATA IS HALF FLOAT = UNSIGNED SHORT
+					int bytesPerPixel;
+					if (manualFormat == PIXELFORMAT_UNCOMPRESSED_R16)
+						bytesPerPixel = sizeof(unsigned short); 
+					else if (manualFormat == PIXELFORMAT_UNCOMPRESSED_R16G16B16A16)
+						bytesPerPixel = sizeof(unsigned short) * 4; // 4 CHANNELS
+					else 
+						TRACELOG(LOG_ERROR, "IMAGE: LoadImageEXR() YOU MUST PICK ALLOWED FORMAT - UNDEFINED BEHEVIOR!");
 
-					// for some amazing reason exr_image.images[channels] stores the RGBA channels backwards meaning that the A channel is in [0] and the R channel is [3]
+					int colorChannelByteSize = image.width * image.height * bytesPerPixel;
+					image.data = RL_MALLOC(colorChannelByteSize); 
+
+					// for some amazing reason exr_image.images[channels] stores the RGBA channels backwards meaning that the Alpha channel is in [0] and the R channel is [3]
+					if(manualFormat == PIXELFORMAT_UNCOMPRESSED_R16)
 					{
-
 						bool foundChannel = false;
 						for (int i = 0; i < exr_header.num_channels; i++)
 						{
@@ -510,11 +517,33 @@ Image LoadImageEXR(const char* fileName, rlPixelFormat manualFormat)
 						}
 						if (!foundChannel)
 							TRACELOG(LOG_WARNING, "IMAGE: Could not find RED channel in EXR file");
+					}	
+					else if (manualFormat == PIXELFORMAT_UNCOMPRESSED_R16G16B16A16)
+					{
+						if (exr_header.num_channels != 4)
+							TRACELOG(LOG_ERROR, "IMAGE: EXR file must have 4 channels, this should not be possible!");
+
+						// Instead of memcpy per channel, interleave!
+						unsigned short* out = (unsigned short*)image.data;
+						unsigned short* inA = (unsigned short*)exr_image.images[0];
+						unsigned short* inB = (unsigned short*)exr_image.images[1];
+						unsigned short* inG = (unsigned short*)exr_image.images[2];
+						unsigned short* inR = (unsigned short*)exr_image.images[3];
+						int numPixels = image.width * image.height;
+
+						for (int i = 0; i < numPixels; ++i)
+						{
+							out[i * 4 + 0] = inR[i]; // Red
+							out[i * 4 + 1] = inG[i]; // Green
+							out[i * 4 + 2] = inB[i]; // Blue
+							out[i * 4 + 3] = inA[i]; // Alpha
+						}
 					}
 
 
+
 					// TinyEXR LoadEXR returns 32-bit float RGBA data
-					image.format = RL_PIXELFORMAT_UNCOMPRESSED_R16;
+					image.format = manualFormat;
 					TRACELOG(LOG_INFO, "IMAGE: EXR data loaded (%ix%i | 32-BIT FLOAT)", image.width, image.height);
 				}
 				FreeEXRImage(&exr_image);
