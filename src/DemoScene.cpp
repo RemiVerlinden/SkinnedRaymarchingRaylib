@@ -13,7 +13,7 @@ Transform shaderLightGizmoTransform = GizmoIdentity();
 namespace DQ
 {
 	void BeginDrawing(Camera& camera);
-	void EndDrawing(ShaderTypes activeShader, int activeAnimId, int animsCount);
+	void EndDrawing(ShaderTypes activeShader, int activeAnimId, int animsCount, int renderingMode = 0, const char* animationName = "");
 	void DrawEllipsoidWires(Transform transform, int rings, int slices, Color color);
 
 }
@@ -25,6 +25,9 @@ void DQ::DemoScene::Init()
 	clippingVolumeGizmoTransform.scale = { 0.15,0.20,0.15 };
 
 	shaderLightGizmoTransform.translation = {0,1,-1};
+	
+	// Initialize rendering mode to shaded
+	m_RenderingMode = 0;
 
 	m_ResourceManager.LoadAllShaders();
 	m_ResourceManager.LoadModel("models/gltf/pirate/pirate.glb");
@@ -43,11 +46,20 @@ void DQ::DemoScene::Init()
 
 void DQ::DemoScene::Update(UpdateContext const& context)
 {
-	if (IsKeyPressed(KEY_F))			m_ActiveShader = (m_ActiveShader == ShaderTypes::LINEARBLENDSKINNING) ? ShaderTypes::DUALQUATERNIONBLENDSKINNING : ShaderTypes::LINEARBLENDSKINNING;
-	if (IsKeyPressed(KEY_G))			m_ActiveShader = (m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHING) ? ShaderTypes::STATICRAYMARCHING : ShaderTypes::SKINNEDRAYMARCHING;
-	if (IsKeyPressed(KEY_H))			m_ActiveShader = (m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR) ? ShaderTypes::SKINNEDRAYMARCHING : ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR;
+	// Shader selection with number keys 1-5
+	if (IsKeyPressed(KEY_ONE))			m_ActiveShader = ShaderTypes::LINEARBLENDSKINNING;
+	if (IsKeyPressed(KEY_TWO))			m_ActiveShader = ShaderTypes::DUALQUATERNIONBLENDSKINNING;
+	if (IsKeyPressed(KEY_THREE))		m_ActiveShader = ShaderTypes::STATICRAYMARCHING;
+	if (IsKeyPressed(KEY_FOUR))			m_ActiveShader = ShaderTypes::SKINNEDRAYMARCHING;
+	if (IsKeyPressed(KEY_FIVE))			m_ActiveShader = ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR;
+	
 	if (IsKeyPressed(KEY_T))			m_ActiveAnimation = std::min(++m_ActiveAnimation, m_ResourceManager.GetModelData().animcount - 1);
-	if (IsKeyPressed(KEY_R))			m_ActiveAnimation = std::max(--m_ActiveAnimation, 0); 
+	if (IsKeyPressed(KEY_R))			m_ActiveAnimation = std::max(--m_ActiveAnimation, 0);
+	
+	// Toggle rendering mode (only for non-linear raymarching)
+	if (IsKeyPressed(KEY_J) && m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR) {
+		m_RenderingMode = (m_RenderingMode + 1) % 3; // Cycle through 0, 1, 2
+	} 
 
 	// Toggle camera controls
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
@@ -109,8 +121,10 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 		{
 			int loc = GetShaderLocation(shader, "ellipsoidLightPosition"); // this should not be done every frame, only once and cache
 			SetShaderValueV(shader, loc, &shaderLightGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
-			//int loc = GetShaderLocation(shader, "ellipsoidLightColor"); // this should not be done every frame, only once and cache
-			//SetShaderValueV(shader, loc, Vector3{1,1,1}, SHADER_UNIFORM_VEC3, 1);
+			
+			// Set rendering mode uniform
+			loc = GetShaderLocation(shader, "renderingMode");
+			SetShaderValue(shader, loc, &m_RenderingMode, SHADER_UNIFORM_INT);
 			//break; Dont break, apply code from SKINNEDRAYMARCHING aswell
 		}
 		case ShaderTypes::SKINNEDRAYMARCHING:
@@ -171,7 +185,8 @@ void DQ::DemoScene::Draw()
 		}
 	}
 
-	DQ::EndDrawing(static_cast<ShaderTypes>(m_ActiveShader), m_ActiveAnimation+1, modelData.animcount);
+	ModelAnimation& anim = modelData.pAnimations[m_ActiveAnimation];
+	DQ::EndDrawing(static_cast<ShaderTypes>(m_ActiveShader), m_ActiveAnimation+1, modelData.animcount, m_RenderingMode, anim.name);
 
 }
 
@@ -195,17 +210,22 @@ namespace DQ
 		BeginMode3D(camera);
 	}
 
-	void EndDrawing(ShaderTypes activeShader, int activeAnimId, int animsCount)
+	void EndDrawing(ShaderTypes activeShader, int activeAnimId, int animsCount, int renderingMode, const char* animationName)
 	{
 		DrawGrid(10, 1.0f);
 
 		EndMode3D();
 
+		// Animation name in top right corner
+		if (animationName && strlen(animationName) > 0) {
+			int textWidth = MeasureText(animationName, 16);
+			DrawText(animationName, GetScreenWidth() - textWidth - 10, 10, 16, LIGHTGRAY);
+		}
+
 		DrawText(TextFormat("R/T to switch animation: %d/%d", activeAnimId, animsCount), 10, 10, 20, GRAY);
-		DrawText("F to toggle skinning mode", 10, 32, 20, GRAY);
-		DrawText("G to enable static raymarch shader", 10, 54, 20, GRAY);
-		DrawText("C to pause", 10, 76, 20, GRAY);
-		DrawText("RIGHT CLICK to toggle camera controls", 10, 98, 20, GRAY);
+		DrawText(TextFormat("1-5 to switch shader: %d/5", (int)activeShader + 1), 10, 32, 20, GRAY);
+		DrawText("C to pause", 10, 54, 20, GRAY);
+		DrawText("RIGHT CLICK to toggle camera controls", 10, 76, 20, GRAY);
 
 		float activeShaderTextHeight = GetScreenHeight() - 30;
 		switch (activeShader)
@@ -227,10 +247,17 @@ namespace DQ
 				DrawText("SKINNED RAYMARCH", 10, activeShaderTextHeight, 30, RED);
 				break;
 			case ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR:
-
-				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 25, 20, PURPLE);
+			{
+				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 50, 20, PURPLE);
+				DrawText("J to toggle rendering mode", 10, activeShaderTextHeight - 25, 20, PURPLE);
+				
+				// Display current rendering mode
+				const char* modeNames[] = {"SHADED", "CHECKER DEBUG", "RAY HEATMAP"};
+				DrawText(TextFormat("Mode: %s", modeNames[renderingMode]), 10, activeShaderTextHeight - 75, 20, PURPLE);
+				
 				DrawText("SKINNED RAYMARCH NON-LINEAR", 10, activeShaderTextHeight, 30, PURPLE);
 				break;
+			}
 		}
 
 

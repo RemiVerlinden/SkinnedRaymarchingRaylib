@@ -19,6 +19,7 @@ namespace DQ {
 
 		int m_ActiveShader;
 		int m_ActiveAnimation;
+		int m_RenderingMode; // 0=shaded, 1=checker debug, 2=ray heatmap
 	};
 }
 #endif // !DEMOSCENE_H

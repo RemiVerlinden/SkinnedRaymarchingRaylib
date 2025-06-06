@@ -338,6 +338,9 @@ uniform vec3 ellipsoidLightColor = vec3(1,1,1);  // Light color/intensity, e.g.,
 
 uniform float time;
 
+// Rendering mode control (0=shaded, 1=checker debug, 2=ray heatmap)
+uniform int renderingMode;
+
 // Bone dual quaternions for inverse transformation
 uniform vec4 boneDualQuaternions[MAX_BONE_NUM*2];
 
@@ -384,6 +387,94 @@ vec3 TransformRayDirInverseSkinning(ivec4 boneIndices, vec4 boneWeights, vec3 ra
     kln_point transformedRayDirPoint = kln_apply(inverseRotor, rayDirPoint);
     return normalize(transformedRayDirPoint.p3.yzw);
 }
+
+//
+// debugEllipsoidColor: given a point on the ellipsoid surface (hitPos),
+// plus the ellipsoid's center & radii, spit out a distinct RGBA color
+// so you can visually see exactly WHERE on the ellipse you hit.
+//
+// In this example it builds a simple 3D checker pattern (8x8x8 cells),
+// but you can tweak checkerCount or swap in any other mapping.
+//
+vec4 debugEllipsoidColor(in vec3 hitPos,
+                         in vec3 ellCenter,
+                         in vec3 ellRadii)
+{
+    // 1) Transform into unit-sphere 'param space'
+    vec3 pLocal = (hitPos - ellCenter) / ellRadii;
+    // Now pLocal should be 1 on the surface.
+
+    // 2) Build a 3D checker: divide each coordinate into [0..checkerCount) cells
+    const float checkerCount = 8.0;
+    float fx = floor((pLocal.x + 1.0) * 0.5 * checkerCount);
+    float fy = floor((pLocal.y + 1.0) * 0.5 * checkerCount);
+    float fz = floor((pLocal.z + 1.0) * 0.5 * checkerCount);
+
+    // 3) Parity bit: if (fx+fy+fz) is even, one color; if odd, the other.
+    float parity = mod(fx + fy + fz, 2.0);
+    vec3 colorEven = vec3(0.9, 0.9, 0.9); // pale
+    vec3 colorOdd  = vec3(0.2, 0.2, 0.2); // dark
+    vec3 baseColor = mix(colorEven, colorOdd, parity);
+
+    return vec4(baseColor, 1.0);
+}
+
+// Rendering mode 0: Shaded with lighting
+vec4 renderShaded(vec3 hitPosition) {
+    // Compute analytic normal (inward-facing)
+    vec3 normal = ellipsoidNormal(hitPosition, clippingVolumePosition, clippingVolumeScale);
+    vec3 toLight = normalize(ellipsoidLightPosition - hitPosition);
+    
+    float NdotL = max(dot(normal, toLight), 0.0);
+    
+    // Optional: add ambient term
+    float ambient = 0.1;
+    float lighting = ambient + (1.0 - ambient) * NdotL;
+    
+    // Example base color (choose what fits your effect)
+    vec3 baseColor = vec3(0.56, 0.2, 0.2);
+    // Final color
+    vec3 shaded = baseColor * lighting * ellipsoidLightColor;
+    
+    return vec4(shaded, 1.0);
+}
+
+// Rendering mode 1: Checker pattern debug
+vec4 renderCheckerDebug(vec3 hitPosition) {
+    return debugEllipsoidColor(hitPosition, clippingVolumePosition, clippingVolumeScale);
+}
+
+// Rendering mode 2: Ray iterations heatmap
+vec4 renderRayHeatmap(int steps) {
+    vec3 heatmapColor;
+    if (steps <= 5) {
+        // Blue: 1-5 steps (very efficient)
+        heatmapColor = vec3(0.0, 0.0, 1.0);
+    } else if (steps <= 10) {
+        // Blue to Cyan: 6-10 steps
+        float t = (steps - 5) / 5.0;
+        heatmapColor = mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), t);
+    } else if (steps <= 20) {
+        // Cyan to Green: 11-20 steps
+        float t = (steps - 10) / 10.0;
+        heatmapColor = mix(vec3(0.0, 1.0, 1.0), vec3(0.0, 1.0, 0.0), t);
+    } else if (steps <= 40) {
+        // Green to Yellow: 21-40 steps
+        float t = (steps - 20) / 20.0;
+        heatmapColor = mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), t);
+    } else if (steps <= 80) {
+        // Yellow to Red: 41-80 steps
+        float t = (steps - 40) / 40.0;
+        heatmapColor = mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), t);
+    } else {
+        // Pure Red: 81+ steps (inefficient)
+        heatmapColor = vec3(1.0, 0.0, 0.0);
+    }
+    
+    return vec4(heatmapColor, 1.0);
+}
+
+
 
 
 void main() {
@@ -475,62 +566,30 @@ void main() {
 
 
     if (hitEllipsoidBorder) {
-        vec3 hitPosition = rayOrigin + transformedRayDir * depth;
-        hitPosition = currentRayOrigin;
+        vec3 hitPosition = currentRayOrigin;
+        
         // Sample the SDF texture at the hit position (already in T-pose space)
         float sampledDepth = texture(bindPose3DTextureSDF, worldToSDFCoords(hitPosition)).r;
 
         if(sampledDepth > 0.5025)
             discard;
 
-        // Compute analytic normal (inward-facing)
-        vec3 normal = ellipsoidNormal(hitPosition, clippingVolumePosition, clippingVolumeScale);
-        vec3 toLight = normalize(ellipsoidLightPosition - hitPosition);
-
-        float NdotL = max(dot(normal, toLight), 0.0);
-
-        // Optional: add ambient term
-        float ambient = 0.1;
-        float lighting = ambient + (1.0 - ambient) * NdotL;
-
-        // Example base color (choose what fits your effect)
-        vec3 baseColor = vec3(0.56, 0.2, 0.2);
-        // Final color
-        vec3 shaded = baseColor * lighting * ellipsoidLightColor;
-
-        finalColor = vec4(shaded, 1.0);
-
-        
-//        // Raymarching step heatmap visualization
-//        vec3 heatmapColor;
-//        if (steps <= 5) {
-//            // Blue: 1-5 steps (very efficient)
-//            heatmapColor = vec3(0.0, 0.0, 1.0);
-//        } else if (steps <= 10) {
-//            // Blue to Cyan: 6-10 steps
-//            float t = (steps - 5) / 5.0;
-//            heatmapColor = mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), t);
-//        } else if (steps <= 20) {
-//            // Cyan to Green: 11-20 steps
-//            float t = (steps - 10) / 10.0;
-//            heatmapColor = mix(vec3(0.0, 1.0, 1.0), vec3(0.0, 1.0, 0.0), t);
-//        } else if (steps <= 40) {
-//            // Green to Yellow: 21-40 steps
-//            float t = (steps - 20) / 20.0;
-//            heatmapColor = mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), t);
-//        } else if (steps <= 80) {
-//            // Yellow to Red: 41-80 steps
-//            float t = (steps - 40) / 40.0;
-//            heatmapColor = mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), t);
-//        } else {
-//            // Pure Red: 81+ steps (inefficient)
-//            heatmapColor = vec3(1.0, 0.0, 0.0);
-//        }
-//            heatmapColor = vec3(1.0, 0.0, 0.0);
-        
-//        finalColor = vec4(heatmapColor, 1.0);
+        // Choose rendering mode based on uniform
+        if (renderingMode == 0) {
+            // Mode 0: Shaded with lighting
+            finalColor = renderShaded(hitPosition);
+        } else if (renderingMode == 1) {
+            // Mode 1: Checker pattern debug
+            finalColor = renderCheckerDebug(hitPosition);
+        } else if (renderingMode == 2) {
+            // Mode 2: Ray iterations heatmap
+            finalColor = renderRayHeatmap(steps);
+        } else {
+            // Fallback to shaded mode
+            finalColor = renderShaded(hitPosition);
+        }
     } else {
         // Ray didn't hit anything definitive - fallback
-        finalColor = vec4(0,steps,0, 1.0); // pink error color
+        finalColor = vec4(1.0, 0.0, 1.0, 1.0); // pink fallback
     }
 }
