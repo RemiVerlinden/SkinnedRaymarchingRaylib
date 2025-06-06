@@ -78,7 +78,8 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	// UPDATE MODEL ANIMATION
 
 	ModelAnimation& anim				= modeldata.pAnimations[m_ActiveAnimation];
-	int	frame							= context.frame % anim.frameCount;
+	// Use time-based animation at 60 FPS equivalent
+	int	frame							= ((int)context.animationTime) % anim.frameCount;
 	DQ::UpdateModelAnimationBones(modeldata.model, anim, frame);
 	//------------------------------------------------------------
 	// UPDATE SHADER 
@@ -224,7 +225,7 @@ namespace DQ
 
 		DrawText(TextFormat("R/T to switch animation: %d/%d", activeAnimId, animsCount), 10, 10, 20, GRAY);
 		DrawText(TextFormat("1-5 to switch shader: %d/5", (int)activeShader + 1), 10, 32, 20, GRAY);
-		DrawText("C to pause", 10, 54, 20, GRAY);
+		DrawText("C to pause, X to reset animation", 10, 54, 20, GRAY);
 		DrawText("RIGHT CLICK to toggle camera controls", 10, 76, 20, GRAY);
 
 		float activeShaderTextHeight = GetScreenHeight() - 30;

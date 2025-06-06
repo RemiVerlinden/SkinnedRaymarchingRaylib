@@ -48,10 +48,10 @@ int main(void)
 
 	DQ::SetCustomCursor();
 
-	SetConfigFlags(FLAG_MSAA_4X_HINT);  // Enable Multi Sampling Anti Aliasing 4x (if available)
+	SetConfigFlags(FLAG_MSAA_4X_HINT);
 
 	DisableCursor();                    // Limit cursor to relative movement inside the window
-	SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
+	SetTargetFPS(60);
 
 	DQ::DemoScene scene{};
 	scene.Init();
@@ -63,14 +63,24 @@ int main(void)
 	{
 		{
 			static DQ::UpdateContext context;
-			static bool pause = true;
+			static bool pause = false;
+			
 			if (IsKeyPressed(KEY_C)) pause = !pause;
+			
+			context.timestep = GetFrameTime();
+			context.resetAnimation = IsKeyPressed(KEY_X);
+			
 			if (!pause)
 			{
 				context.frame++;
-				context.timestep = GetFrameTime();
+				// Animation runs at 60 FPS equivalent regardless of actual framerate
+				context.animationTime += context.timestep * 60.0f;
 			}
-
+			
+			if (context.resetAnimation)
+			{
+				context.animationTime = 0.0f;
+			}
 
 			scene.Update(context);
 			scene.Draw();
