@@ -10,6 +10,7 @@ namespace DQ
 	void UnloadModel(Model model);
 	RLAPI void UpdateModelAnimationBones(Model model, ModelAnimation anim, int frame);
 	void DrawMesh(Mesh mesh, Material material, Matrix transform);
+	void DrawModelWires(Model model, Vector3 position, float scale, Color tint);
 }
 
 #endif // !UTILS_H

@@ -369,6 +369,7 @@
 typedef enum bool { false = 0, true = !false } bool;
 #endif
 
+
 #if !defined(RL_MATRIX_TYPE)
 // Matrix, 4x4 components, column major, OpenGL style, right handed
 typedef struct Matrix {

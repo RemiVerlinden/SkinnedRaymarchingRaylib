@@ -250,6 +250,18 @@ kln_point kln_apply(in kln_motor m)
     return p;
 }
 
+// Inverse of a motor (conjugate for normalized dual quaternions)
+kln_motor kln_inverse(in kln_motor m)
+{
+    kln_motor inv;
+    // For normalized dual quaternions, inverse is conjugate
+    // Conjugate of dual quaternion: (p1, p2) -> (p1*, -p2*)
+    // Where p1* means conjugate of quaternion p1
+    inv.p1 = vec4(m.p1.x, -m.p1.yzw);
+    inv.p2 = vec4(-m.p2.x, m.p2.yzw);
+    return inv;
+}
+
 #endif // KLEIN_GUARD
 
 //=============================================================================================================
@@ -270,6 +282,7 @@ uniform mat4 matNormal;
 uniform mat4 boneMatrices[MAX_BONE_NUM];
 uniform vec4 boneDualQuaternions[MAX_BONE_NUM*2];
 uniform vec3 clippingVolumePosition;
+uniform vec3 cameraPosition;
 
 // Output vertex attributes (to fragment shader)
 out vec2 fragTexCoord;
@@ -279,6 +292,7 @@ out vec3 preSkinnedFragPosition;
 out vec3 fragWorldPosition;
 out vec4 fragBoneWeights;
 out vec4 fragBoneIds;
+out vec3 rayDirVertex;
 
 kln_motor GetMotor(int boneIndex)
 {
@@ -307,6 +321,9 @@ void main()
     kln_point originalNormal = kln_point(vec4(0.0,vertexNormal));
     kln_point skinnedNormal = kln_apply(interpolatedMotor, originalNormal);
 
+
+
+
     fragTexCoord = vertexTexCoord;
     fragColor = vertexColor;
 
@@ -318,7 +335,19 @@ void main()
     
     // Store the original (pre-skinned) world position for raymarching
     preSkinnedFragPosition = vertexPosition;
-    fragWorldPosition = skinnedPosition.p3.yzw;
+    fragWorldPosition = skinnedPosition.p3.yzw / skinnedPosition.p3.x;
+
+
 
     gl_Position = mvp*vec4(skinnedPosition.p3.yzw, skinnedPosition.p3.x);
+
+
+            // Get the inverse motor and extract the rotational part (rotor) for direction transformation
+    kln_motor inverseMotor = kln_inverse(interpolatedMotor);
+    kln_rotor inverseRotor;
+    inverseRotor.p1 = inverseMotor.p1; // Extract rotational part only
+    
+    // Transform ray direction to T-pose space using inverse rotor
+    kln_point rayDirPoint = kln_point(vec4(0.0, fragWorldPosition - cameraPosition)); // Direction vector (w=0)
+    rayDirVertex = normalize(kln_apply(inverseRotor, rayDirPoint).p3.yzw); 
 }

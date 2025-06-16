@@ -250,6 +250,61 @@ kln_point kln_apply(in kln_motor m)
     return p;
 }
 
+// Normalizes motor such that m * ~m = 1
+kln_motor kln_normalize(in kln_motor m)
+{
+    kln_motor result;
+    
+    // Compute |b|^2 = dot(p1, p1)
+    float b2 = dot(m.p1, m.p1);
+    
+    // Compute 1/sqrt(|b|^2) = 1/|b|
+    float s = inversesqrt(b2);
+    
+    // Compute b0*c0 - b1*c1 - b2*c2 - b3*c3
+    float bc = m.p1.x * m.p2.x - dot(m.p1.yzw, m.p2.yzw);
+    
+    // t = bc / |b|^3 = bc / (|b|^2 * |b|) = bc * s / b2
+    float t = bc * s / b2;
+    
+    // Apply normalization
+    result.p1 = m.p1 * s;
+    result.p2 = m.p2 * s - m.p1 * t;
+    result.p2.x = m.p2.x * s + m.p1.x * t;
+    
+    return result;
+}
+
+// Constrains the motor to traverse the shortest arc
+kln_motor kln_constrain(in kln_motor m)
+{
+    kln_motor result;
+    
+    // Check if the scalar part (first component) is negative
+    if (m.p1.x < 0.0) {
+        // Flip both p1 and p2 to ensure shortest arc
+        result.p1 = -m.p1;
+        result.p2 = -m.p2;
+    } else {
+        result.p1 = m.p1;
+        result.p2 = m.p2;
+    }
+    
+    return result;
+}
+
+// Inverse of a motor (conjugate for normalized dual quaternions)
+kln_motor kln_inverse(in kln_motor m)
+{
+    kln_motor inv;
+    // For normalized dual quaternions, inverse is conjugate
+    // Conjugate of dual quaternion: (p1, p2) -> (p1*, -p2*)
+    // Where p1* means conjugate of quaternion p1
+    inv.p1 = vec4(m.p1.x, -m.p1.yzw);
+    inv.p2 = vec4(-m.p2.x, m.p2.yzw);
+    return inv;
+}
+
 #endif // KLEIN_GUARD
 
 //=============================================================================================================
@@ -270,6 +325,7 @@ uniform mat4 matNormal;
 uniform mat4 boneMatrices[MAX_BONE_NUM];
 uniform vec4 boneDualQuaternions[MAX_BONE_NUM*2];
 uniform vec3 clippingVolumePosition;
+uniform vec3 cameraPosition;
 
 // Output vertex attributes (to fragment shader)
 out vec2 fragTexCoord;
@@ -279,6 +335,7 @@ out vec3 preSkinnedFragPosition;
 out vec3 fragWorldPosition;
 out vec4 fragBoneWeights;
 out vec4 fragBoneIds;
+out vec3 rayDirVertex;
 
 kln_motor GetMotor(int boneIndex)
 {
@@ -286,6 +343,26 @@ kln_motor GetMotor(int boneIndex)
         m.p1 = boneDualQuaternions[boneIndex*2];
         m.p2 = boneDualQuaternions[boneIndex*2+1];
     return m;
+}
+
+// Inputs: indices (ivec4), weights (vec4), current rayDir
+vec3 TransformRayDirInverseSkinning(ivec4 boneIndices, vec4 boneWeights, vec3 rayDir) {
+    kln_motor interpolatedMotor = 
+        kln_add(kln_mul(GetMotor(boneIndices.x), boneWeights.x),
+        kln_add(kln_mul(GetMotor(boneIndices.y), boneWeights.y),
+        kln_add(kln_mul(GetMotor(boneIndices.z), boneWeights.z),
+                kln_mul(GetMotor(boneIndices.w), boneWeights.w))));
+
+    interpolatedMotor = kln_constrain(interpolatedMotor);
+    interpolatedMotor = kln_normalize(interpolatedMotor);
+
+    kln_motor inverseMotor = kln_inverse(interpolatedMotor);
+    kln_rotor inverseRotor;
+    inverseRotor.p1 = inverseMotor.p1;
+
+    kln_point rayDirPoint = kln_point(vec4(0.0, rayDir));
+    kln_point transformedRayDirPoint = kln_apply(inverseRotor, rayDirPoint);
+    return normalize(transformedRayDirPoint.p3.yzw);
 }
 
 void main()
@@ -321,4 +398,8 @@ void main()
     fragWorldPosition = skinnedPosition.p3.yzw;
 
     gl_Position = mvp*vec4(skinnedPosition.p3.yzw, skinnedPosition.p3.x);
+
+
+    // Transform ray direction to T-pose space using inverse rotor
+    rayDirVertex = TransformRayDirInverseSkinning(ivec4(vertexBoneIds), vertexBoneWeights, fragWorldPosition - cameraPosition); 
 }

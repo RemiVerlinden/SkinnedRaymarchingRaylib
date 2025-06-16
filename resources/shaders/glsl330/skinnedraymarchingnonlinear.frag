@@ -317,6 +317,7 @@ in vec3 preSkinnedFragPosition;
 in vec3 fragWorldPosition;
 in vec4 fragBoneWeights;
 in vec4 fragBoneIds;
+in vec3 rayDirVertex;
 
 out vec4 finalColor;
 
@@ -328,6 +329,8 @@ uniform vec4 colDiffuse;
 
 uniform vec3 minBounds3DTextureSDF;
 uniform vec3 maxBounds3DTextureSDF;
+uniform vec3 minBounds3DTextureWeight;
+uniform vec3 maxBounds3DTextureWeight;
 
 uniform vec3 clippingVolumePosition;
 uniform vec3 clippingVolumeScale;
@@ -358,6 +361,9 @@ vec3 ellipsoidNormal(vec3 pos, vec3 center, vec3 radii) {
 // Remap world position to SDF texture coordinates (0-1 range)
 vec3 worldToSDFCoords(vec3 worldPos) {
     return (worldPos - minBounds3DTextureSDF) / (maxBounds3DTextureSDF - minBounds3DTextureSDF);
+}
+vec3 worldToSDFCoordsWeight(vec3 worldPos) {
+    return (worldPos - minBounds3DTextureWeight) / (maxBounds3DTextureWeight - minBounds3DTextureWeight);
 }
 
 kln_motor GetMotor(int boneIndex)
@@ -396,16 +402,37 @@ vec3 TransformRayDirInverseSkinning(ivec4 boneIndices, vec4 boneWeights, vec3 ra
 // In this example it builds a simple 3D checker pattern (8x8x8 cells),
 // but you can tweak checkerCount or swap in any other mapping.
 //
-vec4 debugEllipsoidColor(in vec3 hitPos,
-                         in vec3 ellCenter,
-                         in vec3 ellRadii)
-{
-    // 1) Transform into unit-sphere 'param space'
-    vec3 pLocal = (hitPos - ellCenter) / ellRadii;
+//vec4 debugEllipsoidColor(in vec3 hitPos,
+//                         in vec3 ellCenter,
+//                         in vec3 ellRadii)
+//{
+//    // 1) Transform into unit-sphere 'param space'
+//    vec3 pLocal = (hitPos - ellCenter) / ellRadii;
+//    // Now pLocal should be 1 on the surface.
+//
+//    // 2) Build a 3D checker: divide each coordinate into [0..checkerCount) cells
+//    const float checkerCount = 8.0;
+//    float fx = floor((pLocal.x + 1.0) * 0.5 * checkerCount);
+//    float fy = floor((pLocal.y + 1.0) * 0.5 * checkerCount);
+//    float fz = floor((pLocal.z + 1.0) * 0.5 * checkerCount);
+//
+//    // 3) Parity bit: if (fx+fy+fz) is even, one color; if odd, the other.
+//    float parity = mod(fx + fy + fz, 2.0);
+//    vec3 colorEven = vec3(0.9, 0.9, 0.9); // pale
+//    vec3 colorOdd  = vec3(0.2, 0.2, 0.2); // dark
+//    vec3 baseColor = mix(colorEven, colorOdd, parity);
+//
+//    return vec4(baseColor, 1.0);
+//}
+// Rendering mode 1: Checker pattern debug
+vec4 renderCheckerDebug(vec3 hitPosition) {
+        // 1) Transform into unit-sphere 'param space'
+    vec3 pLocal = (hitPosition - clippingVolumePosition);
+//    vec3 pLocal = (hitPosition - clippingVolumePosition) / clippingVolumeScale;
     // Now pLocal should be 1 on the surface.
 
     // 2) Build a 3D checker: divide each coordinate into [0..checkerCount) cells
-    const float checkerCount = 8.0;
+    const float checkerCount = 40.0;
     float fx = floor((pLocal.x + 1.0) * 0.5 * checkerCount);
     float fy = floor((pLocal.y + 1.0) * 0.5 * checkerCount);
     float fz = floor((pLocal.z + 1.0) * 0.5 * checkerCount);
@@ -418,6 +445,7 @@ vec4 debugEllipsoidColor(in vec3 hitPos,
 
     return vec4(baseColor, 1.0);
 }
+
 
 // Rendering mode 0: Shaded with lighting
 vec4 renderShaded(vec3 hitPosition) {
@@ -440,9 +468,9 @@ vec4 renderShaded(vec3 hitPosition) {
 }
 
 // Rendering mode 1: Checker pattern debug
-vec4 renderCheckerDebug(vec3 hitPosition) {
-    return debugEllipsoidColor(hitPosition, clippingVolumePosition, clippingVolumeScale);
-}
+//vec4 renderCheckerDebug(vec3 hitPosition) {
+//    return debugEllipsoidColor(hitPosition, clippingVolumePosition, clippingVolumeScale);
+//}
 
 // Rendering mode 2: Ray iterations heatmap
 vec4 renderRayHeatmap(int steps) {
@@ -495,7 +523,7 @@ void main() {
     ivec4 boneIndices = ivec4(fragBoneIds);
     vec4 boneWeights = fragBoneWeights;
     // Transform ray direction to T-pose space using inverse rotor
-    vec3 transformedRayDir = TransformRayDirInverseSkinning(boneIndices, boneWeights, rayDir);
+    vec3 transformedRayDir = rayDirVertex;
 
 
     vec3 currentRayOrigin = rayOrigin;
@@ -504,7 +532,7 @@ void main() {
     vec4 currentBoneWeights = boneWeights;
 
     bool hitEllipsoidBorder = false;
-    int maxSteps = int(max(max(clippingVolumeScale.x,clippingVolumeScale.y),clippingVolumeScale.z) * 100.0)*2;
+    int maxSteps = int(max(max(clippingVolumeScale.x,clippingVolumeScale.y),clippingVolumeScale.z) * 100.0)*3;
     const float minStep = 0.00001;
 
     float stepdepth = 0.0;
@@ -547,12 +575,18 @@ void main() {
     
         // ==== Sample new bone indices and weights from textures at this position ====
         vec3 texCoord = worldToSDFCoords(pos);
-        vec4 boneWeightsTex = texture(bindPose3DTextureBoneWeight, texCoord);
-        vec4 boneIndicesTexRaw = texture(bindPose3DTextureBoneIndex, texCoord);
+        vec3 texCoordWeight = worldToSDFCoordsWeight(pos);
+        vec4 boneWeightsTex = texture(bindPose3DTextureBoneWeight, texCoordWeight);
+        vec4 boneIndicesTexRaw = texture(bindPose3DTextureBoneIndex, texCoordWeight);
         ivec4 boneIndicesTex = ivec4(boneIndicesTexRaw * 255.0 + 0.5); // Assuming indices are encoded in [0,1] range
 
         if(length(boneIndicesTexRaw) == 0.0){
-        continue;
+        float sampledDepth = texture(bindPose3DTextureSDF, worldToSDFCoords(pos)).r;
+
+        if(sampledDepth > 0.500){
+        hitEllipsoidBorder = true;
+        break;
+        }
         }
         for(int fix;fix<4;fix++)
             boneIndicesTex[fix] = (boneIndicesTex[fix] > 254) ? 0 : boneIndicesTex[fix]; 
@@ -560,18 +594,18 @@ void main() {
         currentBoneIndices = boneIndicesTex;
         currentBoneWeights = boneWeightsTex;
         currentRayDir = TransformRayDirInverseSkinning(currentBoneIndices, currentBoneWeights, rayDir);
-    
+//    currentRayDir = rayDirVertex;
         // ==== Optionally, update origin for non-linear rays (if using curved paths) ====
     }
 
 
     if (hitEllipsoidBorder) {
         vec3 hitPosition = currentRayOrigin;
-        
+
         // Sample the SDF texture at the hit position (already in T-pose space)
         float sampledDepth = texture(bindPose3DTextureSDF, worldToSDFCoords(hitPosition)).r;
 
-        if(sampledDepth > 0.5025)
+        if(sampledDepth > 0.500)
             discard;
 
         // Choose rendering mode based on uniform
@@ -591,5 +625,6 @@ void main() {
     } else {
         // Ray didn't hit anything definitive - fallback
         finalColor = vec4(1.0, 0.0, 1.0, 1.0); // pink fallback
+        discard;
     }
 }

@@ -29,8 +29,8 @@
 
 struct ScreenInfo
 {
-	const int WIDTH = 900;
-	const int HEIGHT = 600;
+	const int WIDTH = 1024;
+	const int HEIGHT = 1024;
 };
 
 ScreenInfo gScreenInfo;
@@ -83,7 +83,7 @@ int main(void)
 			}
 
 			scene.Update(context);
-			scene.Draw();
+			scene.Draw(context);
 		}
 	}
 	//----------------------------------------------------------------------------------

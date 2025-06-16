@@ -8,6 +8,7 @@
 
 Transform clippingVolumeGizmoTransform = GizmoIdentity();
 Transform shaderLightGizmoTransform = GizmoIdentity();
+Transform modelGizmoTransform = GizmoIdentity();
 
 
 namespace DQ
@@ -15,24 +16,29 @@ namespace DQ
 	void BeginDrawing(Camera& camera);
 	void EndDrawing(ShaderTypes activeShader, int activeAnimId, int animsCount, int renderingMode = 0, const char* animationName = "");
 	void DrawEllipsoidWires(Transform transform, int rings, int slices, Color color);
+	void DrawEllipsoidWires(Transform transform, int rings, int slices,int subdivs, Color color);
+	void DrawSkeleton(UpdateContext const& context, ShaderTypes activeShader, Model const& model, ModelAnimation const& animation);
 
 }
 
 void DQ::DemoScene::Init()
 {
 	m_Camera = DQ::GetCamera();
-	clippingVolumeGizmoTransform.translation = { 0,0.92,0 };
-	clippingVolumeGizmoTransform.scale = { 0.15,0.20,0.15 };
+	m_Camera.fovy = 30.f;
+	clippingVolumeGizmoTransform.translation = { 0.0569135025,0.902338147,0.0343498811 };
+	clippingVolumeGizmoTransform.scale = { 0.05,0.05,0.15 };
 
-	shaderLightGizmoTransform.translation = {0,1,-1};
+	shaderLightGizmoTransform.translation = {2.5,1,2.5};
+
+	SetGizmoSize(1);
 	
 	// Initialize rendering mode to shaded
 	m_RenderingMode = 0;
 
-	m_ResourceManager.LoadAllShaders();
+	m_ResourceManager.init();
 	m_ResourceManager.LoadModel("models/gltf/pirate/pirate.glb");
-	m_ResourceManager.LoadTextureSDF("textures/SDF/pirate_SDF_50U.exr");
-	m_ResourceManager.LoadTextureWeight("textures/weight/Pirate_4ChannelWeightsN_289.exr", "textures/weight/Pirate_4ChannelWeightIndex_289.exr");
+	m_ResourceManager.LoadTextureSDF("textures/SDF/pirate_SDF_5U24T.exr");
+	//m_ResourceManager.LoadTextureWeight("textures/weight/Pirate_4ChannelWeightsN_289.exr", "textures/weight/Pirate_4ChannelWeightIndex_289.exr");
 	
 	// Debug: Save the loaded image data to verify loading
 	//m_ResourceManager.DebugSaveImageData("textures/SDF/pirate_SDF_50U.exr", "debug_pirate_sdf.png");
@@ -55,9 +61,12 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	
 	if (IsKeyPressed(KEY_T))			m_ActiveAnimation = std::min(++m_ActiveAnimation, m_ResourceManager.GetModelData().animcount - 1);
 	if (IsKeyPressed(KEY_R))			m_ActiveAnimation = std::max(--m_ActiveAnimation, 0);
+
+	if (IsKeyPressed(KEY_V)) m_Flags ^= DemoFlags::DrawWireframe;
+	if (IsKeyPressed(KEY_B)) m_Flags ^= DemoFlags::DrawBones;
 	
 	// Toggle rendering mode (only for non-linear raymarching)
-	if (IsKeyPressed(KEY_J) && m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR) {
+	if (IsKeyPressed(KEY_J) && m_ActiveShader >= ShaderTypes::SKINNEDRAYMARCHING) {
 		m_RenderingMode = (m_RenderingMode + 1) % 3; // Cycle through 0, 1, 2
 	} 
 
@@ -73,7 +82,7 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	//------------------------------------------------------------
 	// FETCH SHADER AND MODEL DATA
 	Shader shader						= m_ResourceManager.GetShaders().at(m_ActiveShader);
-	CombinedModelData const& modeldata	= m_ResourceManager.GetModelData();
+	CombinedModelData modeldata			= m_ResourceManager.GetModelData();
 	//------------------------------------------------------------
 	// UPDATE MODEL ANIMATION
 
@@ -84,7 +93,8 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 	//------------------------------------------------------------
 	// UPDATE SHADER 
 	modeldata.model.materials[1].shader = shader;
-	Model const& model					= modeldata.model;
+	Model model							= modeldata.model;
+
 	switch (m_ActiveShader)
 	{
 		case ShaderTypes::DUALQUATERNIONBLENDSKINNING:
@@ -105,13 +115,17 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 			SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
 
 			// SDF bounds for 50U pirate mesh (from box_bounds.txt)
-			Vector3 minBounds{ -0.7175f, -0.0325f, -0.7275f };
-			Vector3 maxBounds{ 0.7225f, 1.4075f, 0.7125f };
+
+			Vector3 minBounds{ -1.4375/2, -0.0625/2, -1.2575/2 };
+			Vector3 maxBounds{ 1.4425/2, 2.8175/2, 1.2325 /2 };
+			Vector3 minBoundsWeight{ -0.7175f, -0.0325f, -0.7275f };
+			Vector3 maxBoundsWeight{ 0.7225f, 1.4075f, 0.7125f };
 			// Set SDF bounds uniforms
 			loc = GetShaderLocation(shader, "minBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
 			SetShaderValueV(shader, loc, &minBounds, SHADER_UNIFORM_VEC3, 1);
 			loc = GetShaderLocation(shader, "maxBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
 			SetShaderValueV(shader, loc, &maxBounds, SHADER_UNIFORM_VEC3, 1);
+
 
 			float time = GetTime();
 			loc = GetShaderLocation(shader, "time"); // this should not be done every frame, only once and cache 
@@ -143,13 +157,28 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 			SetShaderValueV(shader, loc, &m_Camera.position, SHADER_UNIFORM_VEC3, 1);
 
 			// SDF bounds for 50U pirate mesh (from box_bounds.txt)
-			Vector3 minBounds{ -0.7175f, -0.0325f, -0.7275f };
-			Vector3 maxBounds{ 0.7225f, 1.4075f, 0.7125f };
+			Vector3 minBounds{ -1.4375 / 2, -0.0625 / 2, -1.2575 / 2 };
+			Vector3 maxBounds{ 1.4425 / 2, 2.8175 / 2, 1.2325 / 2 };
+			Vector3 minBoundsWeight{ -0.7175f, -0.0325f, -0.7275f };
+			Vector3 maxBoundsWeight{ 0.7225f, 1.4075f, 0.7125f };
 			// Set SDF bounds uniforms
 			loc = GetShaderLocation(shader, "minBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
 			SetShaderValueV(shader, loc, &minBounds, SHADER_UNIFORM_VEC3, 1);
 			loc = GetShaderLocation(shader, "maxBounds3DTextureSDF"); // this should not be done every frame, only once and cache 
 			SetShaderValueV(shader, loc, &maxBounds, SHADER_UNIFORM_VEC3, 1);
+			loc = GetShaderLocation(shader, "minBounds3DTextureWeight"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &minBoundsWeight, SHADER_UNIFORM_VEC3, 1);
+			loc = GetShaderLocation(shader, "maxBounds3DTextureWeight"); // this should not be done every frame, only once and cache 
+			SetShaderValueV(shader, loc, &maxBoundsWeight, SHADER_UNIFORM_VEC3, 1);
+
+			loc = GetShaderLocation(shader, "ellipsoidLightPosition"); // this should not be done every frame, only once and cache
+			SetShaderValueV(shader, loc, &shaderLightGizmoTransform.translation, SHADER_UNIFORM_VEC3, 1);
+
+			// Set rendering mode uniform
+			loc = GetShaderLocation(shader, "renderingMode");
+			SetShaderValue(shader, loc, &m_RenderingMode, SHADER_UNIFORM_INT);
+			//break; Dont break, apply code from SKINNEDRAYMARCHING aswell
+
 
 			float time = GetTime();
 			loc = GetShaderLocation(shader, "time"); // this should not be done every frame, only once and cache 
@@ -158,19 +187,29 @@ void DQ::DemoScene::Update(UpdateContext const& context)
 		}
 	}
 	//------------------------------------------------------------
+	Vector3& p = modelGizmoTransform.translation;
+	model.transform = MatrixTranslate(p.x, p.y, p.z); // doesnt work yet
 
 }
 
-void DQ::DemoScene::Draw()
+void DQ::DemoScene::Draw(UpdateContext const& context)
 {
 	DQ::BeginDrawing(m_Camera);
-
-	CombinedModelData const& modelData = m_ResourceManager.GetModelData();
-
+	CombinedModelData const& modeldata = m_ResourceManager.GetModelData();
+	
 	{
-		Model const& model = modelData.model;
+		Model const& model = modeldata.model;
 
-		DQ::DrawMesh(model.meshes[0], model.materials[1], model.transform);
+		if (m_Flags & DemoFlags::DrawWireframe)
+			::DrawModelWires(model,{}, 1, WHITE);
+		else
+			DQ::DrawMesh(model.meshes[0], model.materials[1], model.transform);
+
+		if (m_Flags & DemoFlags::DrawBones)
+			DrawSkeleton(context, static_cast<ShaderTypes>(m_ActiveShader), modeldata.model, modeldata.pAnimations[m_ActiveAnimation]);
+
+		//if (!IsCursorHidden())
+		//	DrawGizmo3D(GIZMO_TRANSLATE , &modelGizmoTransform); // doesnt do anything yet
 	}
 	{
 		if (m_ActiveShader >= ShaderTypes::STATICRAYMARCHING)
@@ -178,16 +217,27 @@ void DQ::DemoScene::Draw()
 			if (!IsCursorHidden())
 			{
 				DrawGizmo3D(GIZMO_TRANSLATE | GIZMO_SCALE, &clippingVolumeGizmoTransform);
-				DrawEllipsoidWires(clippingVolumeGizmoTransform, 8, 8, GREEN);
+				DrawEllipsoidWires(clippingVolumeGizmoTransform, 3, 8, 8, { 71, 170, 129,255 });
 
-				if(m_ActiveShader == ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR)
-					DrawGizmo3D(GIZMO_TRANSLATE , &shaderLightGizmoTransform);
+
+				
+
+				if(m_ActiveShader >= ShaderTypes::SKINNEDRAYMARCHING)
+				{
+					Model model = modeldata.model;
+					Vector3 translation{ model.transform.m12 ,model.transform.m12,model.transform.m14 };
+					Color wireframeColor = GRAY; wireframeColor.a = 45;
+					DQ::DrawModelWires(model, translation, 1., wireframeColor);
+
+					DrawBillboard(m_Camera, m_ResourceManager.GetLightbulbIcon(), shaderLightGizmoTransform.translation, 0.2, WHITE);
+					DrawGizmo3D(GIZMO_TRANSLATE, &shaderLightGizmoTransform);
+				}
 			}
 		}
 	}
 
-	ModelAnimation& anim = modelData.pAnimations[m_ActiveAnimation];
-	DQ::EndDrawing(static_cast<ShaderTypes>(m_ActiveShader), m_ActiveAnimation+1, modelData.animcount, m_RenderingMode, anim.name);
+	ModelAnimation& anim = modeldata.pAnimations[m_ActiveAnimation];
+	DQ::EndDrawing(static_cast<ShaderTypes>(m_ActiveShader), m_ActiveAnimation+1, modeldata.animcount, m_RenderingMode, anim.name);
 
 }
 
@@ -195,6 +245,8 @@ void DQ::DemoScene::Shutdown()
 {
 	m_ResourceManager.Shutdown();
 }
+
+
 
 
 
@@ -209,13 +261,16 @@ namespace DQ
 		ClearBackground(BLACK);
 
 		BeginMode3D(camera);
+
+		//DrawGrid(10, 1.0f);
+
 	}
 
 	void EndDrawing(ShaderTypes activeShader, int activeAnimId, int animsCount, int renderingMode, const char* animationName)
 	{
-		DrawGrid(10, 1.0f);
 
 		EndMode3D();
+		DrawFPS(10, 10);
 
 		// Animation name in top right corner
 		if (animationName && strlen(animationName) > 0) {
@@ -223,10 +278,10 @@ namespace DQ
 			DrawText(animationName, GetScreenWidth() - textWidth - 10, 10, 16, LIGHTGRAY);
 		}
 
-		DrawText(TextFormat("R/T to switch animation: %d/%d", activeAnimId, animsCount), 10, 10, 20, GRAY);
-		DrawText(TextFormat("1-5 to switch shader: %d/5", (int)activeShader + 1), 10, 32, 20, GRAY);
-		DrawText("C to pause, X to reset animation", 10, 54, 20, GRAY);
-		DrawText("RIGHT CLICK to toggle camera controls", 10, 76, 20, GRAY);
+		//DrawText(TextFormat("R/T to switch animation: %d/%d", activeAnimId, animsCount), 10, 10, 20, GRAY);
+		//DrawText(TextFormat("1-5 to switch shader: %d/5", (int)activeShader + 1), 10, 32, 20, GRAY);
+		//DrawText("C to pause, X to reset animation", 10, 54, 20, GRAY);
+		//DrawText("RIGHT CLICK to toggle camera controls", 10, 76, 20, GRAY);
 
 		float activeShaderTextHeight = GetScreenHeight() - 30;
 		switch (activeShader)
@@ -239,22 +294,28 @@ namespace DQ
 				break;
 			case ShaderTypes::STATICRAYMARCHING:
 
-				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 25, 20, GOLD);
+				//DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 25, 20, GOLD);
 				DrawText("STATIC RAYMARCH", 10, activeShaderTextHeight, 30, ORANGE);
 				break;
 			case ShaderTypes::SKINNEDRAYMARCHING:
+			{
+				//DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 50, 20, RED);
+				//DrawText("J to toggle rendering mode", 10, activeShaderTextHeight - 25, 20, RED);
 
-				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 25, 20, RED);
+				// Display current rendering mode
+				const char* modeNames[] = { "SHADED", "CHECKER DEBUG", "RAY HEATMAP" };
+				//DrawText(TextFormat("Mode: %s", modeNames[renderingMode]), 10, activeShaderTextHeight - 75, 20, RED);
 				DrawText("SKINNED RAYMARCH", 10, activeShaderTextHeight, 30, RED);
 				break;
+			}
 			case ShaderTypes::SKINNEDRAYMARCHINGNONLINEAR:
 			{
-				DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 50, 20, PURPLE);
-				DrawText("J to toggle rendering mode", 10, activeShaderTextHeight - 25, 20, PURPLE);
+				//DrawText("RIGHT CLICK to toggle wound interaction", 10, activeShaderTextHeight - 50, 20, PURPLE);
+				//DrawText("J to toggle rendering mode", 10, activeShaderTextHeight - 25, 20, PURPLE);
 				
 				// Display current rendering mode
 				const char* modeNames[] = {"SHADED", "CHECKER DEBUG", "RAY HEATMAP"};
-				DrawText(TextFormat("Mode: %s", modeNames[renderingMode]), 10, activeShaderTextHeight - 75, 20, PURPLE);
+				//DrawText(TextFormat("Mode: %s", modeNames[renderingMode]), 10, activeShaderTextHeight - 75, 20, PURPLE);
 				
 				DrawText("SKINNED RAYMARCH NON-LINEAR", 10, activeShaderTextHeight, 30, PURPLE);
 				break;
@@ -333,6 +394,101 @@ namespace DQ
 		rlEnd();
 		rlPopMatrix();
 	}
+
+	void DrawEllipsoidWires(Transform transform, int rings, int slices, int subdivs, Color color)
+	{
+		Vector3 translation = transform.translation;
+		Quaternion rotation = transform.rotation;
+		Vector3 scale = transform.scale;
+
+		Vector3 axis;
+		float angle;
+		QuaternionToAxisAngle(rotation, &axis, &angle);
+
+		rlPushMatrix();
+		rlTranslatef(translation.x, translation.y, translation.z);
+		rlRotatef(RAD2DEG * angle, axis.x, axis.y, axis.z);
+		rlScalef(scale.x, scale.y, scale.z);
+
+		rlBegin(RL_LINES);
+		rlColor4ub(color.r, color.g, color.b, color.a);
+
+		float ringAngleStep = DEG2RAD * (180.0f / (rings + 1));
+		float sliceAngleStep = DEG2RAD * (360.0f / slices);
+
+		// Draw latitude rings
+		for (int i = 1; i <= rings; i++)
+		{
+			float theta = ringAngleStep * i; // latitude
+			for (int j = 0; j < slices; j++)
+			{
+				for (int k = 0; k < subdivs; k++)
+				{
+					float phi0 = sliceAngleStep * (j + (float)k / subdivs);
+					float phi1 = sliceAngleStep * (j + (float)(k + 1) / subdivs);
+
+					Vector3 v0 = { sinf(theta) * cosf(phi0), cosf(theta), sinf(theta) * sinf(phi0) };
+					Vector3 v1 = { sinf(theta) * cosf(phi1), cosf(theta), sinf(theta) * sinf(phi1) };
+
+					rlVertex3f(v0.x, v0.y, v0.z);
+					rlVertex3f(v1.x, v1.y, v1.z);
+				}
+			}
+		}
+
+		// Draw longitude slices
+		for (int j = 0; j < slices; j++)
+		{
+			float phi = sliceAngleStep * j;
+			for (int i = 0; i <= rings; i++)
+			{
+				for (int k = 0; k < subdivs; k++)
+				{
+					float theta0 = ringAngleStep * (i + (float)k / subdivs);
+					float theta1 = ringAngleStep * (i + (float)(k + 1) / subdivs);
+
+					Vector3 v0 = { sinf(theta0) * cosf(phi), cosf(theta0), sinf(theta0) * sinf(phi) };
+					Vector3 v1 = { sinf(theta1) * cosf(phi), cosf(theta1), sinf(theta1) * sinf(phi) };
+
+					rlVertex3f(v0.x, v0.y, v0.z);
+					rlVertex3f(v1.x, v1.y, v1.z);
+				}
+			}
+		}
+
+		rlEnd();
+		rlPopMatrix();
+	}
+
+	void DrawSkeleton(UpdateContext const& context, ShaderTypes activeShader, Model const& model, ModelAnimation const& anim)
+	{
+		for (int i = 0; i < model.boneCount - 1; i++)
+		{
+			if (activeShader == ShaderTypes::STATICRAYMARCHING)
+			{
+				//DrawCube(model.bindPose[i].translation, 0.04f, 0.04f, 0.04f, RED);
+
+				if (model.bones[i].parent >= 0)
+				{
+					DrawLine3D(model.bindPose[i].translation,
+						model.bindPose[model.bones[i].parent].translation, RED);
+				}
+			}
+			else
+			{
+				int	frame = ((int)context.animationTime) % anim.frameCount;
+				//DrawCube(anim.framePoses[frame][i].translation, 0.05f, 0.05f, 0.05f, RED);
+
+				if (anim.bones[i].parent >= 0)
+				{
+					DrawLine3D(anim.framePoses[frame][i].translation,
+						anim.framePoses[frame][anim.bones[i].parent].translation, RED);
+				}
+			}
+		}
+	}
+
+
 }
 
 

@@ -131,6 +131,12 @@ void DQ::DrawMesh(Mesh mesh, Material material, Matrix transform)
     ::DrawMesh(mesh, material, transform);
 }
 
+void DQ::DrawModelWires(Model model, Vector3 position, float scale, Color tint)
+{
+    static Model wireframeModel = LoadModelFromMesh(model.meshes[0]);
+    ::DrawModelWires(wireframeModel, position, scale, tint);
+}
+
 // This is just a wrapper that calls the original LoadModel, then additionally initialises a seperate array where we store the Dual Quaternion bone transforms 
 // possibly unconventional implementation
 Model DQ::LoadModel(const char* fileName)

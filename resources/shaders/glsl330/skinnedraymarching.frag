@@ -169,64 +169,64 @@ kln_motor kln_inverse(in kln_motor m)
     return inv;
 }
 
-kln_plane kln_apply(in kln_rotor r, in kln_plane p)
-{
-    vec4 dc_scale = vec4(1.0, 2.0, 2.0, 2.0);
-    vec4 neg_low = vec4(-1.0, 1.0, 1.0, 1.0);
-
-    vec4 t1 = r.p1.zxxx * r.p1.zwyz;
-    t1 += r.p1.yzwy * r.p1.yyzw;
-    t1 *= dc_scale;
-
-    vec4 t2 = r.p1 * r.p1.xwyz;
-    t2 -= (r.p1.wxxx * r.p1.wzwy) * neg_low;
-    t2 *= dc_scale;
-
-    vec4 t3 = r.p1 * r.p1;
-    t3 -= r.p1.xwyz * r.p1.xwyz;
-    t3 += r.p1.xxxx * r.p1.xxxx;
-    t3 -= r.p1.xzwy * r.p1.xzwy;
-
-    // TODO: provide variadic rotor-plane application
-    kln_plane q;
-    q.p0 = t1 * p.p0.xzwy;
-    q.p0 += t2 * p.p0.xwyz;
-    q.p0 += t3 * p.p0;
-    return q;
-}
-
-kln_plane kln_apply(in kln_motor m, in kln_plane p)
-{
-    vec4 dc_scale = vec4(1.0, 2.0, 2.0, 2.0);
-    vec4 neg_low = vec4(-1.0, 1.0, 1.0, 1.0);
-
-    vec4 t1 = m.p1.zxxx * m.p1.zwyz;
-    t1 += m.p1.yzwy * m.p1.yyzw;
-    t1 *= dc_scale;
-
-    vec4 t2 = m.p1 * m.p1.xwyz;
-    t2 -= (m.p1.wxxx * m.p1.wzwy) * neg_low;
-    t2 *= dc_scale;
-
-    vec4 t3 = m.p1 * m.p1;
-    t3 -= m.p1.xwyz * m.p1.xwyz;
-    t3 += m.p1.xxxx * m.p1.xxxx;
-    t3 -= m.p1.xzwy * m.p1.xzwy;
-
-    vec4 t4 = m.p1.x * m.p2;
-    t4 += m.p1.xzwy * m.p2.xwyz;
-    t4 += m.p1 * m.p2.x;
-    t4 -= m.p1.xwyz * m.p2.xzwy;
-    t4 *= vec4(0.0, 2.0, 2.0, 2.0);
-
-    // TODO: provide variadic motor-plane application
-    kln_plane q;
-    q.p0 = t1 * p.p0.xzwy;
-    q.p0 += t2 * p.p0.xwyz;
-    q.p0 += t3 * p.p0;
-    q.p0 += vec4(dot(t4, p.p0), 0.0, 0.0, 0.0);
-    return q;
-}
+//kln_plane kln_apply(in kln_rotor r, in kln_plane p)
+//{
+//    vec4 dc_scale = vec4(1.0, 2.0, 2.0, 2.0);
+//    vec4 neg_low = vec4(-1.0, 1.0, 1.0, 1.0);
+//
+//    vec4 t1 = r.p1.zxxx * r.p1.zwyz;
+//    t1 += r.p1.yzwy * r.p1.yyzw;
+//    t1 *= dc_scale;
+//
+//    vec4 t2 = r.p1 * r.p1.xwyz;
+//    t2 -= (r.p1.wxxx * r.p1.wzwy) * neg_low;
+//    t2 *= dc_scale;
+//
+//    vec4 t3 = r.p1 * r.p1;
+//    t3 -= r.p1.xwyz * r.p1.xwyz;
+//    t3 += r.p1.xxxx * r.p1.xxxx;
+//    t3 -= r.p1.xzwy * r.p1.xzwy;
+//
+//    // TODO: provide variadic rotor-plane application
+//    kln_plane q;
+//    q.p0 = t1 * p.p0.xzwy;
+//    q.p0 += t2 * p.p0.xwyz;
+//    q.p0 += t3 * p.p0;
+//    return q;
+//}
+//
+//kln_plane kln_apply(in kln_motor m, in kln_plane p)
+//{
+//    vec4 dc_scale = vec4(1.0, 2.0, 2.0, 2.0);
+//    vec4 neg_low = vec4(-1.0, 1.0, 1.0, 1.0);
+//
+//    vec4 t1 = m.p1.zxxx * m.p1.zwyz;
+//    t1 += m.p1.yzwy * m.p1.yyzw;
+//    t1 *= dc_scale;
+//
+//    vec4 t2 = m.p1 * m.p1.xwyz;
+//    t2 -= (m.p1.wxxx * m.p1.wzwy) * neg_low;
+//    t2 *= dc_scale;
+//
+//    vec4 t3 = m.p1 * m.p1;
+//    t3 -= m.p1.xwyz * m.p1.xwyz;
+//    t3 += m.p1.xxxx * m.p1.xxxx;
+//    t3 -= m.p1.xzwy * m.p1.xzwy;
+//
+//    vec4 t4 = m.p1.x * m.p2;
+//    t4 += m.p1.xzwy * m.p2.xwyz;
+//    t4 += m.p1 * m.p2.x;
+//    t4 -= m.p1.xwyz * m.p2.xzwy;
+//    t4 *= vec4(0.0, 2.0, 2.0, 2.0);
+//
+//    // TODO: provide variadic motor-plane application
+//    kln_plane q;
+//    q.p0 = t1 * p.p0.xzwy;
+//    q.p0 += t2 * p.p0.xwyz;
+//    q.p0 += t3 * p.p0;
+//    q.p0 += vec4(dot(t4, p.p0), 0.0, 0.0, 0.0);
+//    return q;
+//}
 
 kln_point kln_apply(in kln_rotor r, in kln_point p)
 {
@@ -317,6 +317,7 @@ in vec3 preSkinnedFragPosition;
 in vec3 fragWorldPosition;
 in vec4 fragBoneWeights;
 in vec4 fragBoneIds;
+in vec3 rayDirVertex;
 
 out vec4 finalColor;
 
@@ -331,6 +332,10 @@ uniform vec3 clippingVolumePosition;
 uniform vec3 clippingVolumeScale;
 uniform vec3 cameraPosition;
 uniform float time;
+uniform int renderingMode;
+
+uniform vec3 ellipsoidLightPosition;
+
 
 // Bone dual quaternions for inverse transformation
 uniform vec4 boneDualQuaternions[MAX_BONE_NUM*2];
@@ -340,6 +345,9 @@ float ellipsoidSDF( vec3 pos, vec3 center, vec3 r )
     vec3 p = pos - center;
     float k1 = length(p/r);
     return (k1-1.0)*min(min(r.x,r.y),r.z);
+}
+vec3 ellipsoidNormal(vec3 pos, vec3 center, vec3 radii) {
+    return -normalize((pos - center) / (radii * radii)); // negative for interior surface
 }
 
 // Remap world position to SDF texture coordinates (0-1 range)
@@ -354,6 +362,11 @@ kln_motor GetMotor(int boneIndex)
     m.p2 = boneDualQuaternions[boneIndex*2+1];
     return m;
 }
+
+vec4 renderShaded(vec3 hitPosition);
+vec4 renderCheckerDebug(vec3 hitPosition);
+vec4 renderRayHeatmap(int steps);
+
 
 void main() {
     // SDF: <0 inside ellipsoid
@@ -392,12 +405,13 @@ void main() {
     inverseRotor.p1 = inverseMotor.p1; // Extract rotational part only
     
     // Transform ray direction to T-pose space using inverse rotor
-    kln_point rayDirPoint = kln_point(vec4(0.0, rayDir)); // Direction vector (w=0)
-    kln_point transformedRayDirPoint = kln_apply(inverseRotor, rayDirPoint);
-    vec3 transformedRayDir = normalize(transformedRayDirPoint.p3.yzw); // CRITICAL: Re-normalize after transformation
+//    kln_point rayDirPoint = kln_point(vec4(0.0, rayDir)); // Direction vector (w=0)
+//    kln_point transformedRayDirPoint = kln_apply(inverseRotor, rayDirPoint);
+//    vec3 transformedRayDir = normalize(transformedRayDirPoint.p3.yzw); // CRITICAL: Re-normalize after transformation
+    vec3 transformedRayDir = rayDirVertex; // CRITICAL: Re-normalize after transformation
 
     bool hitEllipsoidBorder = false;
-    const int maxSteps = 128;
+    const int maxSteps = 512;
     const float minStep = 0.00001;
 
     float depth = 0.0;
@@ -413,11 +427,19 @@ void main() {
             hitEllipsoidBorder = true;
             break;
         }
-        depth += max(abs(ellipsoidDist),minStep);
+
+        float sampledDepth = texture(bindPose3DTextureSDF, worldToSDFCoords(pos)).r;
+
+        if(sampledDepth > 0.7){
+        hitEllipsoidBorder = true;
+        break;
+        }
+        depth += min(max(abs(ellipsoidDist),minStep),0.01);
         steps++;
 
         if(depth >= MAX_DIST) break;
     }
+//            finalColor = vec4(transformedRayDir, 1.0); return;
 
     if (hitEllipsoidBorder) {
         vec3 hitPosition = rayOrigin + transformedRayDir * depth;
@@ -425,38 +447,144 @@ void main() {
         // Sample the SDF texture at the hit position (already in T-pose space)
         float sampledDepth = texture(bindPose3DTextureSDF, worldToSDFCoords(hitPosition)).r;
 
-        if(sampledDepth > 0.5025)
-            discard;
-        
-        // Raymarching step heatmap visualization
-        vec3 heatmapColor;
-        if (steps <= 5) {
-            // Blue: 1-5 steps (very efficient)
-            heatmapColor = vec3(0.0, 0.0, 1.0);
-        } else if (steps <= 10) {
-            // Blue to Cyan: 6-10 steps
-            float t = (steps - 5) / 5.0;
-            heatmapColor = mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), t);
-        } else if (steps <= 20) {
-            // Cyan to Green: 11-20 steps
-            float t = (steps - 10) / 10.0;
-            heatmapColor = mix(vec3(0.0, 1.0, 1.0), vec3(0.0, 1.0, 0.0), t);
-        } else if (steps <= 40) {
-            // Green to Yellow: 21-40 steps
-            float t = (steps - 20) / 20.0;
-            heatmapColor = mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), t);
-        } else if (steps <= 80) {
-            // Yellow to Red: 41-80 steps
-            float t = (steps - 40) / 40.0;
-            heatmapColor = mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), t);
-        } else {
-            // Pure Red: 81+ steps (inefficient)
-            heatmapColor = vec3(1.0, 0.0, 0.0);
+        if(sampledDepth > 0.5025){
+            finalColor = vec4(1-steps/float(maxSteps),0,0, 1.0);
+//         return;
+         discard;
         }
+//        // Raymarching step heatmap visualization
+//        vec3 heatmapColor;
+//        if (steps <= 5) {
+//            // Blue: 1-5 steps (very efficient)
+//            heatmapColor = vec3(0.0, 0.0, 1.0);
+//        } else if (steps <= 10) {
+//            // Blue to Cyan: 6-10 steps
+//            float t = (steps - 5) / 5.0;
+//            heatmapColor = mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), t);
+//        } else if (steps <= 20) {
+//            // Cyan to Green: 11-20 steps
+//            float t = (steps - 10) / 10.0;
+//            heatmapColor = mix(vec3(0.0, 1.0, 1.0), vec3(0.0, 1.0, 0.0), t);
+//        } else if (steps <= 40) {
+//            // Green to Yellow: 21-40 steps
+//            float t = (steps - 20) / 20.0;
+//            heatmapColor = mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), t);
+//        } else if (steps <= 80) {
+//            // Yellow to Red: 41-80 steps
+//            float t = (steps - 40) / 40.0;
+//            heatmapColor = mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), t);
+//        } else {
+//            // Pure Red: 81+ steps (inefficient)
+//            heatmapColor = vec3(1.0, 0.0, 0.0);
+//        }
         
-        finalColor = vec4(heatmapColor, 1.0);
+//        finalColor = vec4(heatmapColor * sampledDepth * 2, 1.0);
+
+        // Choose rendering mode based on uniform
+        if (renderingMode == 0) {
+            // Mode 0: Shaded with lighting
+            finalColor = renderShaded(hitPosition);
+        } else if (renderingMode == 1) {
+            // Mode 1: Checker pattern debug
+            finalColor = renderCheckerDebug(hitPosition);
+        } else if (renderingMode == 2) {
+            // Mode 2: Ray iterations heatmap
+            finalColor = renderRayHeatmap(steps);
+            finalColor.xyz *= sampledDepth * 2;
+        } else {
+            // Fallback to shaded mode
+            finalColor = renderShaded(hitPosition);
+        }
     } else {
         // Ray didn't hit anything definitive - fallback
         finalColor = vec4(1,0,1, 1.0); // pink error color
+        discard;
+
     }
+}
+
+
+
+
+
+
+//
+// debugEllipsoidColor: given a point on the ellipsoid surface (hitPos),
+// plus the ellipsoid's center & radii, spit out a distinct RGBA color
+// so you can visually see exactly WHERE on the ellipse you hit.
+//
+// In this example it builds a simple 3D checker pattern (8x8x8 cells),
+// but you can tweak checkerCount or swap in any other mapping.
+//
+
+// Rendering mode 0: Shaded with lighting
+vec4 renderShaded(vec3 hitPosition) {
+    // Compute analytic normal (inward-facing)
+    vec3 normal = ellipsoidNormal(hitPosition, clippingVolumePosition, clippingVolumeScale);
+    vec3 toLight = normalize(ellipsoidLightPosition - hitPosition);
+    
+    float NdotL = max(dot(normal, toLight), 0.0);
+    
+    // Optional: add ambient term
+    float ambient = 0.1;
+    float lighting = ambient + (1.0 - ambient) * NdotL;
+    
+    // Example base color (choose what fits your effect)
+    vec3 baseColor = vec3(0.56, 0.2, 0.2);
+    // Final color
+    vec3 shaded = baseColor * lighting;
+    
+    return vec4(shaded, 1.0);
+}
+
+// Rendering mode 1: Checker pattern debug
+vec4 renderCheckerDebug(vec3 hitPosition) {
+        // 1) Transform into unit-sphere 'param space'
+    vec3 pLocal = (hitPosition - clippingVolumePosition);
+//    vec3 pLocal = (hitPosition - clippingVolumePosition) / clippingVolumeScale;
+    // Now pLocal should be 1 on the surface.
+
+    // 2) Build a 3D checker: divide each coordinate into [0..checkerCount) cells
+    const float checkerCount = 40.0;
+    float fx = floor((pLocal.x + 1.0) * 0.5 * checkerCount);
+    float fy = floor((pLocal.y + 1.0) * 0.5 * checkerCount);
+    float fz = floor((pLocal.z + 1.0) * 0.5 * checkerCount);
+
+    // 3) Parity bit: if (fx+fy+fz) is even, one color; if odd, the other.
+    float parity = mod(fx + fy + fz, 2.0);
+    vec3 colorEven = vec3(0.9, 0.9, 0.9); // pale
+    vec3 colorOdd  = vec3(0.2, 0.2, 0.2); // dark
+    vec3 baseColor = mix(colorEven, colorOdd, parity);
+
+    return vec4(baseColor, 1.0);
+}
+
+// Rendering mode 2: Ray iterations heatmap
+vec4 renderRayHeatmap(int steps) {
+    vec3 heatmapColor;
+    if (steps <= 5) {
+        // Blue: 1-5 steps (very efficient)
+        heatmapColor = vec3(0.0, 0.0, 1.0);
+    } else if (steps <= 10) {
+        // Blue to Cyan: 6-10 steps
+        float t = (steps - 5) / 5.0;
+        heatmapColor = mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 1.0), t);
+    } else if (steps <= 20) {
+        // Cyan to Green: 11-20 steps
+        float t = (steps - 10) / 10.0;
+        heatmapColor = mix(vec3(0.0, 1.0, 1.0), vec3(0.0, 1.0, 0.0), t);
+    } else if (steps <= 40) {
+        // Green to Yellow: 21-40 steps
+        float t = (steps - 20) / 20.0;
+        heatmapColor = mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), t);
+    } else if (steps <= 80) {
+        // Yellow to Red: 41-80 steps
+        float t = (steps - 40) / 40.0;
+        heatmapColor = mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), t);
+    } else {
+        // Pure Red: 81+ steps (inefficient)
+        heatmapColor = vec3(1.0, 0.0, 0.0);
+    }
+    
+    return vec4(heatmapColor, 1.0);
 }

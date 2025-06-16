@@ -29,8 +29,10 @@ namespace DQ {
     class ResourceManager final
     {
 
-    public:
         void LoadAllShaders();
+        void LoadLightbulbIcon();
+    public:
+        void init();
         void LoadModel(const char* fileName);
         void LoadTextureSDF(const char* fileName);
         void LoadTextureWeight(const char* fileNameBoneWeight, const char* fileNameBoneIndex);
@@ -41,6 +43,7 @@ namespace DQ {
         Texture GetTextureSDF() const;
         Texture GetTextureBoneWeight() const;
         Texture GetTextureBoneIndex() const;
+        Texture2D GetLightbulbIcon() const;
 
         void Shutdown();
     private:
@@ -50,6 +53,7 @@ namespace DQ {
         Texture m_TextureBindPoseSDF; // 3D texture stored as raylib Texture struct - need rework
         Texture m_TextureBoneWeight; // 3D texture with 4 channel weight data (volumetric 4 weight blend skinning)
         Texture m_TextureBoneIndex; // 3D texture with 4 channel weight index data
+        Texture2D m_LightbulbIcon;
     };
 }
 

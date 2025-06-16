@@ -5,7 +5,7 @@
 
 void DQ::SetCustomCursor()
 {
-	Image cursor = LoadImage("textures/cursor/arrow.png");
+	Image cursor = LoadImage("textures/icons/arrow.png");
 	if (cursor.format != PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
 	{
 		ImageFormat(&cursor, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);

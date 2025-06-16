@@ -495,13 +495,17 @@ void UpdateCamera(Camera *camera, int mode)
         if (IsGamepadAvailable(0))
         {
             // Gamepad controller support
-            CameraYaw(camera, -(GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_X)*2)*CAMERA_MOUSE_MOVE_SENSITIVITY, rotateAroundTarget);
-            CameraPitch(camera, -(GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y)*2)*CAMERA_MOUSE_MOVE_SENSITIVITY, lockView, rotateAroundTarget, rotateUp);
+            float yaw = GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_X); 
+            float pitch = GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y);
+            yaw = (fabsf(yaw) < 0.15) ? 0 : yaw;
+            pitch = (fabsf(pitch) < 0.15) ? 0 : pitch;
+            CameraYaw(camera, -(yaw *2)*CAMERA_MOUSE_MOVE_SENSITIVITY * 8, rotateAroundTarget);
+            CameraPitch(camera, -(pitch *2)*CAMERA_MOUSE_MOVE_SENSITIVITY * 8, lockView, rotateAroundTarget, rotateUp);
 
-            if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y) <= -0.25f) CameraMoveForward(camera, cameraMoveSpeed, moveInWorldPlane);
-            if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X) <= -0.25f) CameraMoveRight(camera, -cameraMoveSpeed, moveInWorldPlane);
-            if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y) >= 0.25f) CameraMoveForward(camera, -cameraMoveSpeed, moveInWorldPlane);
-            if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X) >= 0.25f) CameraMoveRight(camera, cameraMoveSpeed, moveInWorldPlane);
+            if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y) <= -0.15f) CameraMoveForward(camera, -cameraMoveSpeed * GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y), moveInWorldPlane);
+            if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X) <= -0.15f) CameraMoveRight(camera, cameraMoveSpeed * GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X), moveInWorldPlane);
+            if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y) >= 0.15f) CameraMoveForward(camera, -cameraMoveSpeed * GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y), moveInWorldPlane);
+            if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X) >= 0.15f) CameraMoveRight(camera, cameraMoveSpeed * GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X), moveInWorldPlane);
         }
 
         if (mode == CAMERA_FREE)

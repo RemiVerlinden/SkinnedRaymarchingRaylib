@@ -25,12 +25,23 @@ void DQ::ResourceManager::LoadAllShaders()
 
     Shader SkinnedRaymarchingShaderNonlinear = LoadShader(TextFormat("shaders/glsl%i/skinnedraymarchingnonlinear.vert", GLSL_VERSION),
         TextFormat("shaders/glsl%i/skinnedraymarchingnonlinear.frag", GLSL_VERSION));
-
+    
 	m_Shaders.push_back(skinningShader);
 	m_Shaders.push_back(DQSkinningShader);
     m_Shaders.push_back(StaticRaymarchingShader);
     m_Shaders.push_back(SkinnedRaymarchingShader);
     m_Shaders.push_back(SkinnedRaymarchingShaderNonlinear);
+}
+
+void DQ::ResourceManager::LoadLightbulbIcon()
+{
+    m_LightbulbIcon = LoadTexture("textures/icons/lightbulb.png");
+}
+
+void DQ::ResourceManager::init()
+{
+    LoadAllShaders();
+    LoadLightbulbIcon();
 }
 
 void DQ::ResourceManager::LoadModel(const char* fileName)
@@ -156,6 +167,11 @@ Texture DQ::ResourceManager::GetTextureBoneIndex() const
     return m_TextureBoneIndex;
 }
 
+Texture2D DQ::ResourceManager::GetLightbulbIcon() const
+{
+    return m_LightbulbIcon;
+}
+
 void DQ::ResourceManager::Shutdown()
 {
 	// needs rework, if we dont load the texture we unload anyways
@@ -163,6 +179,7 @@ void DQ::ResourceManager::Shutdown()
         ::UnloadTexture(m_TextureBindPoseSDF);
         ::UnloadTexture(m_TextureBoneWeight);
         ::UnloadTexture(m_TextureBoneIndex);
+        ::UnloadTexture(m_LightbulbIcon);
 	}
     {
         for (int i = 0; i < m_Shaders.size(); i++) UnloadShader(m_Shaders[i]);
